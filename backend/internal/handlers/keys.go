@@ -73,7 +73,9 @@ func (h *KeyHandler) GetPublicKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	encoder := json.NewEncoder(w)
+	encoder.SetEscapeHTML(false)
+	encoder.Encode(map[string]string{
 		"public_key": publicKey,
 	})
 }

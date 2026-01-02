@@ -152,7 +152,7 @@ async function exportKeyToPEM(key, type) {
     const exportedAsBase64 = btoa(exportedAsString);
     const pemHeader = type === 'public' ? '-----BEGIN PUBLIC KEY-----' : '-----BEGIN PRIVATE KEY-----';
     const pemFooter = type === 'public' ? '-----END PUBLIC KEY-----' : '-----END PRIVATE KEY-----';
-    return pemHeader + '\\n' + exportedAsBase64.match(/.{1,64}/g).join('\\n') + '\\n' + pemFooter;
+    return pemHeader + '\n' + exportedAsBase64.match(/.{1,64}/g).join('\n') + '\n' + pemFooter;
 }
 
 function downloadPrivateKey() {
@@ -331,7 +331,8 @@ async function decryptAllCapsules() {
                     });
 
                     if (!response.ok) {
-                        console.error('Failed to download capsule ' + capsule.id);
+                        const errorText = await response.text();
+                        console.error('Failed to download capsule ' + capsule.id + ': HTTP ' + response.status + ' - ' + errorText);
                         failCount++;
                         continue;
                     }
@@ -368,9 +369,10 @@ async function decryptAllCapsules() {
 }
 
 async function decryptData(encryptedFile, privateKey) {
-    const encryptedAESKey = encryptedFile.slice(0, 256);
-    const nonce = encryptedFile.slice(256, 268);
-    const encryptedData = encryptedFile.slice(268);
+    // With RSA-4096, the encrypted AES key is 512 bytes
+    const encryptedAESKey = encryptedFile.slice(0, 512);
+    const nonce = encryptedFile.slice(512, 524);
+    const encryptedData = encryptedFile.slice(524);
     const aesKeyRaw = await window.crypto.subtle.decrypt({ name: 'RSA-OAEP' }, privateKey, encryptedAESKey);
     const aesKey = await window.crypto.subtle.importKey('raw', aesKeyRaw, { name: 'AES-GCM' }, true, ['encrypt', 'decrypt']);
     const decryptedData = await window.crypto.subtle.decrypt({ name: 'AES-GCM', iv: nonce }, aesKey, encryptedData);
