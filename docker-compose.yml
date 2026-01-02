@@ -1,0 +1,45 @@
+services:
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: capsule-backend
+    ports:
+      - "8080:8080"
+    volumes:
+      # Persistent storage for database and encrypted files
+      - backend-data:/app/data
+    environment:
+      - PORT=8080
+      - DATABASE_PATH=/app/data/capsule.db
+      - STORAGE_PATH=/app/data/users
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production-please}
+    restart: unless-stopped
+    networks:
+      - capsule-network
+
+  # Frontend Web UI
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: capsule-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - PORT=3000
+    restart: unless-stopped
+    networks:
+      - capsule-network
+
+volumes:
+  # Persistent volume for database and encrypted files
+  backend-data:
+    driver: local
+
+networks:
+  capsule-network:
+    driver: bridge

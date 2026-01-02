@@ -1,0 +1,37 @@
+# Environment variables
+.env
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Encrypted files (for local testing)
+*.enc
+data/
+
+# Go build artifacts
+/backend/api
+/backend/frontend
+/frontend/frontend
+
+# Go module cache
+go.sum
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Private keys (NEVER commit these!)
+*_private_key.txt
+private_key.pem

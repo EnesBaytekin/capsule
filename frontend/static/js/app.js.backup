@@ -1,0 +1,568 @@
+// Time Capsule - Zero-Knowledge Frontend Application
+// ALL encryption and decryption happens on the client side
+// The server NEVER sees plaintext data or private keys
+
+const API_BASE = 'http://localhost:8080';
+
+// Global state
+let currentUser = null;
+let token = null;
+let keyPair = null;
+let privateKeyPEM = null;
+
+// DOM Elements
+const authView = document.getElementById('auth-view');
+const dashboardView = document.getElementById('dashboard-view');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    setupEventListeners();
+    checkExistingAuth();
+});
+
+function setupEventListeners() {
+    // Tab switching
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tab = e.target.dataset.tab;
+            switchTab(tab);
+        });
+    });
+
+    // Register form
+    document.getElementById('generate-keys-btn').addEventListener('click', generateKeyPair);
+    document.getElementById('download-key-btn').addEventListener('click', downloadPrivateKey);
+    document.getElementById('register-form').addEventListener('submit', handleRegister);
+
+    // Login form
+    document.getElementById('login-form').addEventListener('submit', handleLogin);
+
+    // Dashboard
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    document.getElementById('unlock-btn').addEventListener('click', handleUnlock);
+
+    // Image preview
+    document.getElementById('capsule-image').addEventListener('change', handleImagePreview);
+
+    // Upload form
+    document.getElementById('upload-form').addEventListener('submit', handleUpload);
+
+    // Close modal
+    document.querySelector('.close-btn').addEventListener('click', () => {
+        document.getElementById('decrypt-modal').classList.add('hidden');
+    });
+}
+
+function checkExistingAuth() {
+    token = localStorage.getItem('token');
+    if (token) {
+        showDashboard();
+    }
+}
+
+// Tab Switching
+function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+
+    if (tab === 'login') {
+        document.getElementById('login-form').classList.remove('hidden');
+        document.getElementById('register-form').classList.add('hidden');
+    } else {
+        document.getElementById('login-form').classList.add('hidden');
+        document.getElementById('register-form').classList.remove('hidden');
+    }
+}
+
+// Key Generation using Web Crypto API
+async function generateKeyPair() {
+    try {
+        showToast('Generating encryption keys...', 'info');
+
+        // Generate RSA-OAEP key pair (4096-bit)
+        keyPair = await window.crypto.subtle.generateKey(
+            {
+                name: 'RSA-OAEP',
+                modulusLength: 4096,
+                publicExponent: new Uint8Array([1, 0, 1]),
+                hash: 'SHA-256',
+            },
+            true,
+            ['encrypt', 'decrypt']
+        );
+
+        // Export keys to PEM format
+        const publicKeyPEM = await exportKeyToPEM(keyPair.publicKey, 'public');
+        privateKeyPEM = await exportKeyToPEM(keyPair.privateKey, 'private');
+
+        // Display private key
+        document.getElementById('private-key-display').value = privateKeyPEM;
+        document.getElementById('key-display').classList.remove('hidden');
+        document.getElementById('register-submit-btn').disabled = false;
+
+        showToast('Keys generated successfully! Save your private key!', 'success');
+    } catch (error) {
+        console.error('Key generation error:', error);
+        showToast('Failed to generate keys', 'error');
+    }
+}
+
+async function exportKeyToPEM(key, type) {
+    const exported = await window.crypto.subtle.exportKey(
+        type === 'public' ? 'spki' : 'pkcs8',
+        key
+    );
+
+    const exportedAsString = String.fromCharCode.apply(null, new Uint8Array(exported));
+    const exportedAsBase64 = btoa(exportedAsString);
+    const pemHeader = type === 'public' ? '-----BEGIN PUBLIC KEY-----' : '-----BEGIN PRIVATE KEY-----';
+    const pemFooter = type === 'public' ? '-----END PUBLIC KEY-----' : '-----END PRIVATE KEY-----';
+
+    return `${pemHeader}\n${exportedAsBase64.match(/.{1,64}/g).join('\n')}\n${pemFooter}`;
+}
+
+async function importKeyFromPEM(pem, type) {
+    const pemHeader = type === 'public' ? '-----BEGIN PUBLIC KEY-----' : '-----BEGIN PRIVATE KEY-----';
+    const pemFooter = type === 'public' ? '-----END PUBLIC KEY-----' : '-----END PRIVATE KEY-----';
+    const pemContents = pem.substring(pemHeader.length, pem.length - pemFooter.length);
+    const binaryDerString = atob(pemContents);
+    const binaryDer = new Uint8Array(binaryDerString.length);
+
+    for (let i = 0; i < binaryDerString.length; i++) {
+        binaryDer[i] = binaryDerString.charCodeAt(i);
+    }
+
+    return await window.crypto.subtle.importKey(
+        type === 'public' ? 'spki' : 'pkcs8',
+        binaryDer.buffer,
+        { name: 'RSA-OAEP', hash: 'SHA-256' },
+        true,
+        [type === 'public' ? 'encrypt' : 'decrypt']
+    );
+}
+
+function downloadPrivateKey() {
+    const blob = new Blob([privateKeyPEM], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'capsule_private_key.txt';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Private key downloaded! Keep it safe!', 'success');
+}
+
+// Authentication
+async function handleRegister(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('register-username').value;
+    const password = document.getElementById('register-password').value;
+
+    if (!keyPair || !privateKeyPEM) {
+        showToast('Please generate encryption keys first', 'error');
+        return;
+    }
+
+    try {
+        // Export public key to PEM
+        const publicKeyPEM = await exportKeyToPEM(keyPair.publicKey, 'public');
+
+        const response = await fetch(`${API_BASE}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username,
+                password,
+                public_key: publicKeyPEM
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            token = data.token;
+            localStorage.setItem('token', token);
+            showToast('Registration successful! Please save your private key!', 'success');
+            showDashboard();
+        } else {
+            showToast(data.error || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        console.error('Registration error:', error);
+        showToast('Registration failed', 'error');
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+
+    try {
+        const response = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            token = data.token;
+            localStorage.setItem('token', token);
+            showToast('Login successful!', 'success');
+            showDashboard();
+        } else {
+            showToast('Invalid credentials', 'error');
+        }
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('Login failed', 'error');
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('token');
+    token = null;
+    currentUser = null;
+    privateKeyPEM = null;
+    authView.classList.add('active');
+    dashboardView.classList.remove('active');
+    showToast('Logged out successfully', 'info');
+}
+
+// Dashboard
+function showDashboard() {
+    // Decode JWT to get username
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    currentUser = payload.username;
+
+    document.getElementById('username-display').textContent = currentUser;
+    authView.classList.remove('active');
+    dashboardView.classList.add('active');
+    loadCapsules();
+}
+
+async function handleUnlock() {
+    privateKeyPEM = document.getElementById('private-key-input').value;
+
+    try {
+        // Try to import the key to validate it
+        await importKeyFromPEM(privateKeyPEM, 'private');
+        document.querySelector('.key-prompt').classList.add('hidden');
+        showToast('Capsules unlocked!', 'success');
+    } catch (error) {
+        showToast('Invalid private key', 'error');
+    }
+}
+
+// Capsule Type Selection
+function handleImagePreview(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('image-preview');
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            preview.innerHTML = `<img src="${event.target.result}" alt="Preview">`;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+// Encrypt & Upload
+async function handleUpload(e) {
+    e.preventDefault();
+
+    // Note: Private key is NOT needed for upload (only for decryption)
+    // We use the public key stored on the server for encryption
+
+    try {
+        const text = document.getElementById('capsule-text').value.trim();
+        const fileInput = document.getElementById('capsule-image');
+        const hasText = text.length > 0;
+        const hasImage = fileInput.files.length > 0;
+
+        // Validate that at least one type of content is provided
+        if (!hasText && !hasImage) {
+            showToast('Please enter text or select an image (or both)', 'error');
+            return;
+        }
+
+        // Determine capsule type
+        let capsuleType;
+        let dataToEncrypt;
+
+        if (hasText && hasImage) {
+            // Mixed content: combine both into JSON
+            capsuleType = 'mixed';
+            const imageData = await fileInput.files[0].arrayBuffer();
+            const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageData)));
+
+            const combinedContent = JSON.stringify({
+                text: text,
+                image: imageBase64
+            });
+            dataToEncrypt = new TextEncoder().encode(combinedContent);
+        } else if (hasText) {
+            // Text only
+            capsuleType = 'text';
+            dataToEncrypt = new TextEncoder().encode(text);
+        } else {
+            // Image only
+            capsuleType = 'image';
+            dataToEncrypt = await fileInput.files[0].arrayBuffer();
+        }
+
+        // ENCRYPTION HAPPENS HERE - ON THE CLIENT
+        const { encryptedData, encryptedAESKey, nonce } = await encryptData(dataToEncrypt);
+
+        // Send ONLY encrypted data to server
+        const response = await fetch(`${API_BASE}/capsule/upload`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                type: capsuleType,
+                encrypted_data: Array.from(encryptedData),
+                encrypted_aes_key: Array.from(encryptedAESKey),
+                nonce: Array.from(nonce)
+            })
+        });
+
+        if (response.ok) {
+            showToast('Capsule encrypted and uploaded!', 'success');
+            document.getElementById('upload-form').reset();
+            document.getElementById('image-preview').innerHTML = '';
+            loadCapsules();
+        } else {
+            showToast('Upload failed', 'error');
+        }
+    } catch (error) {
+        console.error('Upload error:', error);
+        showToast('Upload failed', 'error');
+    }
+}
+
+// Client-side encryption using AES-256-GCM + RSA-OAEP
+async function encryptData(data) {
+    // 1. Generate random AES-256 key
+    const aesKey = await window.crypto.subtle.generateKey(
+        { name: 'AES-GCM', length: 256 },
+        true,
+        ['encrypt', 'decrypt']
+    );
+
+    // 2. Generate random nonce (IV)
+    const nonce = window.crypto.getRandomValues(new Uint8Array(12));
+
+    // 3. Encrypt data with AES-GCM
+    const encryptedData = await window.crypto.subtle.encrypt(
+        { name: 'AES-GCM', iv: nonce },
+        aesKey,
+        data
+    );
+
+    // 4. Export AES key
+    const aesKeyRaw = await window.crypto.subtle.exportKey('raw', aesKey);
+
+    // 5. Get user's public key from server
+    const response = await fetch(`${API_BASE}/keys/public`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const { public_key: publicKeyPEM } = await response.json();
+
+    // 6. Import public key
+    const publicKey = await importKeyFromPEM(publicKeyPEM, 'public');
+
+    // 7. Encrypt AES key with RSA-OAEP
+    const encryptedAESKey = await window.crypto.subtle.encrypt(
+        { name: 'RSA-OAEP' },
+        publicKey,
+        aesKeyRaw
+    );
+
+    return {
+        encryptedData: new Uint8Array(encryptedData),
+        encryptedAESKey: new Uint8Array(encryptedAESKey),
+        nonce
+    };
+}
+
+// Load Capsules
+async function loadCapsules() {
+    try {
+        const response = await fetch(`${API_BASE}/capsule/list`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const capsules = await response.json();
+        displayCapsules(capsules);
+    } catch (error) {
+        console.error('Load capsules error:', error);
+        showToast(`Failed to load capsules: ${error.message}`, 'error');
+    }
+}
+
+function displayCapsules(capsules) {
+    const container = document.getElementById('capsules-list');
+
+    if (capsules.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>No capsules yet. Create your first encrypted memory!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = capsules.map(capsule => `
+        <div class="capsule-item">
+            <div class="capsule-info">
+                <span class="capsule-type">${capsule.type}</span>
+                <span class="capsule-date">${new Date(capsule.created_at).toLocaleString()}</span>
+            </div>
+            <button class="decrypt-btn" onclick="decryptCapsule(${capsule.id}, '${capsule.type}')">
+                Decrypt & View
+            </button>
+        </div>
+    `).join('');
+}
+
+// Decrypt Capsule
+async function decryptCapsule(id, type) {
+    if (!privateKeyPEM) {
+        showToast('Please unlock your capsules with your private key first', 'error');
+        return;
+    }
+
+    try {
+        showToast('Decrypting...', 'info');
+
+        // Download encrypted file
+        const response = await fetch(`${API_BASE}/capsule/download/${id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to download capsule');
+        }
+
+        const encryptedFile = new Uint8Array(await response.arrayBuffer());
+
+        // DECRYPTION HAPPENS HERE - ON THE CLIENT
+        const decryptedData = await decryptData(encryptedFile);
+
+        // Display content using the capsule's actual type
+        displayDecryptedContent(decryptedData, type);
+
+        showToast('Decrypted successfully!', 'success');
+    } catch (error) {
+        console.error('Decryption error:', error);
+        showToast('Decryption failed', 'error');
+    }
+}
+
+// Client-side decryption
+async function decryptData(encryptedFile) {
+    // Import private key
+    const privateKey = await importKeyFromPEM(privateKeyPEM, 'private');
+
+    // Extract components: encrypted_aes_key (256 bytes for RSA-4096) + nonce (12 bytes) + encrypted_data
+    const encryptedAESKey = encryptedFile.slice(0, 256);
+    const nonce = encryptedFile.slice(256, 268);
+    const encryptedData = encryptedFile.slice(268);
+
+    // Decrypt AES key using RSA-OAEP
+    const aesKeyRaw = await window.crypto.subtle.decrypt(
+        { name: 'RSA-OAEP' },
+        privateKey,
+        encryptedAESKey
+    );
+
+    // Import AES key
+    const aesKey = await window.crypto.subtle.importKey(
+        'raw',
+        aesKeyRaw,
+        { name: 'AES-GCM' },
+        true,
+        ['encrypt', 'decrypt']
+    );
+
+    // Decrypt data using AES-GCM
+    const decryptedData = await window.crypto.subtle.decrypt(
+        { name: 'AES-GCM', iv: nonce },
+        aesKey,
+        encryptedData
+    );
+
+    return new Uint8Array(decryptedData);
+}
+
+function displayDecryptedContent(data, type) {
+    const modal = document.getElementById('decrypt-modal');
+    const content = document.getElementById('decrypted-content');
+
+    if (type === 'text') {
+        const text = new TextDecoder().decode(data);
+        content.innerHTML = `<p>${escapeHtml(text)}</p>`;
+    } else if (type === 'image') {
+        const blob = new Blob([data], { type: 'image/jpeg' });
+        const url = URL.createObjectURL(blob);
+        content.innerHTML = `<img src="${url}" alt="Decrypted image">`;
+    } else if (type === 'mixed') {
+        // Parse JSON to get both text and image
+        const jsonStr = new TextDecoder().decode(data);
+        const contentObj = JSON.parse(jsonStr);
+
+        let html = '';
+        if (contentObj.text) {
+            html += `<div class="mixed-content"><h4>Text:</h4><p>${escapeHtml(contentObj.text)}</p></div>`;
+        }
+        if (contentObj.image) {
+            // Convert base64 to blob
+            const binaryString = atob(contentObj.image);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const blob = new Blob([bytes], { type: 'image/jpeg' });
+            const url = URL.createObjectURL(blob);
+            html += `<div class="mixed-content"><h4>Image:</h4><img src="${url}" alt="Decrypted image"></div>`;
+        }
+        content.innerHTML = html;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+// Utilities
+function showToast(message, type = 'info') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = `toast ${type}`;
+    toast.classList.remove('hidden');
+
+    setTimeout(() => {
+        toast.classList.add('hidden');
+    }, 3000);
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Make decryptCapsule globally accessible for onclick handlers
+window.decryptCapsule = decryptCapsule;
+
