@@ -273,35 +273,74 @@ function createCapsuleCard(capsule) {
 }
 // ===== Decryption =====
 async function decryptAllCapsules() {
-    if (!privateKeyPEM || capsules.length === 0) return;
+    if (!privateKeyPEM) {
+        const keyStatus = document.getElementById('key-status');
+        if (keyStatus) {
+            keyStatus.innerHTML = 'No private key provided';
+            keyStatus.className = 'key-status error';
+        }
+        return;
+    }
+
+    if (capsules.length === 0) {
+        const keyStatus = document.getElementById('key-status');
+        if (keyStatus) {
+            keyStatus.innerHTML = 'No memories to decrypt yet. Create your first memory!';
+            keyStatus.className = 'key-status';
+        }
+        return;
+    }
+
     const keyStatus = document.getElementById('key-status');
     keyStatus.innerHTML = 'Decrypting memories...';
     keyStatus.className = 'key-status';
+
     try {
         const privateKey = await importKeyFromPEM(privateKeyPEM, 'private');
+        let successCount = 0;
+        let failCount = 0;
+
         for (const capsule of capsules) {
             if (!decryptedContents.has(capsule.id)) {
                 try {
-                    const response = await fetch(API_BASE + '/capsule/download/' + capsule.id, { headers: { 'Authorization': 'Bearer ' + token } });
-                    if (!response.ok) continue;
+                    const response = await fetch(API_BASE + '/capsule/download/' + capsule.id, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+
+                    if (!response.ok) {
+                        console.error('Failed to download capsule ' + capsule.id);
+                        failCount++;
+                        continue;
+                    }
+
                     const encryptedFile = new Uint8Array(await response.arrayBuffer());
                     const decryptedData = await decryptData(encryptedFile, privateKey);
                     const content = parseDecryptedContent(decryptedData, capsule.type);
                     decryptedContents.set(capsule.id, content);
+                    successCount++;
                 } catch (error) {
                     console.error('Failed to decrypt capsule ' + capsule.id + ':', error);
+                    failCount++;
                 }
             }
         }
+
         renderFeed();
-        keyStatus.innerHTML = '✓ All memories decrypted!';
-        keyStatus.className = 'key-status success';
-        showToast('Memories decrypted!', 'success');
+
+        if (failCount === 0) {
+            keyStatus.innerHTML = '✓ All ' + successCount + ' memories decrypted!';
+            keyStatus.className = 'key-status success';
+            showToast('All memories decrypted!', 'success');
+        } else {
+            keyStatus.innerHTML = '✓ Decrypted ' + successCount + ' memories (' + failCount + ' failed)';
+            keyStatus.className = 'key-status';
+            showToast('Some memories could not be decrypted', 'info');
+        }
     } catch (error) {
         console.error('Decryption error:', error);
-        keyStatus.innerHTML = '✗ Failed to decrypt';
+        keyStatus.innerHTML = '✗ Decryption failed: ' + error.message;
         keyStatus.className = 'key-status error';
-        showToast('Decryption failed', 'error');
+        showToast('Decryption failed: ' + error.message, 'error');
     }
 }
 
@@ -338,13 +377,43 @@ function parseDecryptedContent(data, type) {
 }
 
 async function importKeyFromPEM(pem, type) {
+    // Clean the PEM string - remove extra whitespace and normalize line endings
+    const cleanedPem = pem
+        .trim()
+        .replace(/[\r\n]+/g, '\n')
+        .replace(/\s*-----BEGIN/g, '-----BEGIN')
+        .replace(/-----END\s*/g, '-----END')
+        .replace(/-----/g, '-----\n')
+        .replace(/\n+/g, '\n');
+
     const pemHeader = type === 'public' ? '-----BEGIN PUBLIC KEY-----' : '-----BEGIN PRIVATE KEY-----';
     const pemFooter = type === 'public' ? '-----END PUBLIC KEY-----' : '-----END PRIVATE KEY-----';
-    const pemContents = pem.substring(pemHeader.length, pem.length - pemFooter.length);
-    const binaryDerString = atob(pemContents);
+
+    const pemHeaderIndex = cleanedPem.indexOf(pemHeader);
+    const pemFooterIndex = cleanedPem.indexOf(pemFooter);
+
+    if (pemHeaderIndex === -1 || pemFooterIndex === -1) {
+        throw new Error('Invalid PEM format: missing headers');
+    }
+
+    const pemContents = cleanedPem.substring(pemHeaderIndex + pemHeader.length, pemFooterIndex).trim();
+
+    // Remove all whitespace including newlines for base64 decoding
+    const base64 = pemContents.replace(/[\s\n\r]/g, '');
+
+    const binaryDerString = atob(base64);
     const binaryDer = new Uint8Array(binaryDerString.length);
-    for (let i = 0; i < binaryDerString.length; i++) binaryDer[i] = binaryDerString.charCodeAt(i);
-    return await window.crypto.subtle.importKey(type === 'public' ? 'spki' : 'pkcs8', binaryDer.buffer, { name: 'RSA-OAEP', hash: 'SHA-256' }, true, [type === 'public' ? 'encrypt' : 'decrypt']);
+    for (let i = 0; i < binaryDerString.length; i++) {
+        binaryDer[i] = binaryDerString.charCodeAt(i);
+    }
+
+    return await window.crypto.subtle.importKey(
+        type === 'public' ? 'spki' : 'pkcs8',
+        binaryDer.buffer,
+        { name: 'RSA-OAEP', hash: 'SHA-256' },
+        true,
+        [type === 'public' ? 'encrypt' : 'decrypt']
+    );
 }
 
 // ===== Settings =====
@@ -359,18 +428,35 @@ function loadPrivateKeyFromStorage() {
 async function savePrivateKey() {
     const keyInput = document.getElementById('settings-private-key').value.trim();
     const keyStatus = document.getElementById('key-status');
+
     if (!keyInput) {
         keyStatus.innerHTML = 'Please enter your private key';
         keyStatus.className = 'key-status error';
         return;
     }
-    if (!keyInput.includes('-----BEGIN PRIVATE KEY-----')) {
-        keyStatus.innerHTML = 'Invalid private key format';
+
+    if (!keyInput.includes('-----BEGIN PRIVATE KEY-----') || !keyInput.includes('-----END PRIVATE KEY-----')) {
+        keyStatus.innerHTML = 'Invalid private key format. Must include BEGIN/END headers.';
         keyStatus.className = 'key-status error';
         return;
     }
+
+    // Try to validate the key by attempting to import it
+    try {
+        await importKeyFromPEM(keyInput, 'private');
+        keyStatus.innerHTML = 'Validating key...';
+        keyStatus.className = 'key-status';
+    } catch (error) {
+        keyStatus.innerHTML = 'Invalid private key: ' + error.message;
+        keyStatus.className = 'key-status error';
+        return;
+    }
+
     privateKeyPEM = keyInput;
     localStorage.setItem('privateKey', keyInput);
+
+    // Clear previous decrypted contents and re-decrypt everything
+    decryptedContents.clear();
     await decryptAllCapsules();
 }
 
