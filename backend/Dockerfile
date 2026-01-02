@@ -27,14 +27,14 @@ RUN apk add --no-cache sqlite-libs ca-certificates
 # Copy the binary from builder
 COPY --from=builder /app/api .
 
-# Create data directory for persistent storage
-RUN mkdir -p /app/data
+# Create data directories
+RUN mkdir -p /app/data /app/certs
 
-# Expose port
-EXPOSE 8080
+# Expose HTTPS port
+EXPOSE 8443
 
-# Set environment variables
-ENV PORT=8080
+# Set environment variables for HTTPS
+ENV PORT=8443
 ENV DATABASE_PATH=/app/data/capsule.db
 ENV STORAGE_PATH=/app/data/users
 ENV JWT_SECRET=change-this-secret-in-production

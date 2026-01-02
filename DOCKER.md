@@ -1,88 +1,91 @@
-# Docker Deployment with HTTPS
+# Docker Deployment
 
-This application requires HTTPS for the Web Crypto API to work properly when accessing from machines other than localhost.
+Time Capsule with HTTPS support using self-signed certificates.
 
 ## Quick Start
 
-1. **Generate certificates and start everything:**
-   ```bash
-   ./docker-setup.sh
-   ```
+```bash
+./docker-setup.sh
+```
 
-2. **Access the application:**
-   - Frontend: `https://localhost:3443`
-   - Backend: `https://localhost:8443`
-   - From other machines: `https://<YOUR_IP>:3443`
+This will:
+1. Generate SSL certificates
+2. Build and start services
+3. Run on HTTPS only
 
-3. **Accept the self-signed certificate warning** in your browser
+## Access
+
+- **Frontend:** `https://localhost:3443`
+- **Backend:** `https://localhost:8443`
+- **From other machines:** `https://<YOUR_IP>:3443`
+
+Accept the self-signed certificate warning in your browser.
 
 ## Manual Setup
 
-### 1. Generate SSL Certificates
+### 1. Generate Certificates
 
 ```bash
-# Backend certificates
-mkdir -p backend/certs
+mkdir -p backend/certs frontend/certs
+
 openssl req -x509 -newkey rsa:4096 -keyout backend/certs/key.pem \
   -out backend/certs/cert.pem -days 365 -nodes \
   -subj "/C=US/ST=State/L=City/O=Dev/CN=localhost"
 
-# Frontend certificates
-mkdir -p frontend/certs
 openssl req -x509 -newkey rsa:4096 -keyout frontend/certs/key.pem \
   -out frontend/certs/cert.pem -days 365 -nodes \
   -subj "/C=US/ST=State/L=City/O=Dev/CN=localhost"
 ```
 
-### 2. Start with Docker Compose
+### 2. Start Services
 
 ```bash
-# Build and start (foreground)
 docker-compose up --build
+```
 
-# Or start in detached mode
+Or run in background:
+
+```bash
 docker-compose up -d --build
+```
+
+## Commands
+
+```bash
+# Start
+docker-compose up -d
 
 # View logs
 docker-compose logs -f
 
 # Stop
 docker-compose down
+
+# Remove data
+docker-compose down -v
 ```
-
-## Architecture
-
-- **Frontend** (nginx): Serves static files on port 3443 (HTTPS)
-- **Backend** (Go): API server on port 8443 (HTTPS)
-- **Data persistence**: Docker volume for database and encrypted files
 
 ## Ports
 
-| Service | Protocol | Port |
-|---------|----------|------|
-| Frontend | HTTPS | 3443 |
-| Backend | HTTPS | 8443 |
+| Service | Port |
+|---------|------|
+| Frontend (HTTPS) | 3443 |
+| Backend (HTTPS) | 8443 |
 
 ## Environment Variables
 
-Edit `.env` file or set in docker-compose.yml:
+Set in `.env` or docker-compose.yml:
 
-- `JWT_SECRET`: Secret for JWT token signing (change in production!)
+- `JWT_SECRET`: Secret for JWT tokens (change in production!)
 
 ## Why HTTPS?
 
-The Web Crypto API (`window.crypto.subtle`) is only available in **secure contexts**:
-- ✅ HTTPS
-- ✅ localhost
-- ❌ HTTP from other machines
-
-Without HTTPS, encryption/decryption will fail with:
+Web Crypto API requires secure contexts (HTTPS) for encryption/decryption.
+Without HTTPS, the app fails with:
 ```
 Cannot read properties of undefined (reading 'generateKey')
 ```
 
-## Production Deployment
+## Production
 
-For production, use proper SSL certificates from Let's Encrypt or a commercial CA. Replace the self-signed certificates in:
-- `backend/certs/`
-- `frontend/certs/`
+Replace self-signed certificates with proper ones from Let's Encrypt or a CA.
