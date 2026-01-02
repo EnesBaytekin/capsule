@@ -164,10 +164,37 @@
             <div class="modal-body">
                 <div class="settings-section">
                     <h3>🔐 Private Key</h3>
-                    <p class="help-text">Enter your private key to decrypt your memories. This key is never sent to the server.</p>
-                    <div class="form-group">
-                        <textarea id="settings-private-key" placeholder="Paste your private key here..." rows="6"></textarea>
+                    <p class="help-text">Add your private key to decrypt your memories. This key is never sent to the server.</p>
+
+                    <!-- Tab buttons -->
+                    <div class="auth-tabs" style="margin-bottom: 1rem;">
+                        <button class="auth-tab active" data-key-method="paste">Paste Key</button>
+                        <button class="auth-tab" data-key-method="upload">Upload File</button>
                     </div>
+
+                    <!-- Paste method -->
+                    <div id="key-method-paste">
+                        <div class="form-group">
+                            <textarea id="settings-private-key" placeholder="Paste your private key here..." rows="6"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Upload method -->
+                    <div id="key-method-upload" class="hidden">
+                        <div class="form-group">
+                            <label class="file-label" style="width: 100%; display: flex; justify-content: center;">
+                                <input type="file" id="private-key-file" accept=".txt,.pem,.key" style="display: none;">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                    <polyline points="17 8 12 3 7 8"></polyline>
+                                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                                </svg>
+                                <span style="margin-left: 8px;">Select private key file</span>
+                            </label>
+                        </div>
+                        <div id="uploaded-file-name" class="text-muted"></div>
+                    </div>
+
                     <button id="save-private-key-btn" class="btn btn-primary btn-block">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
                             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>

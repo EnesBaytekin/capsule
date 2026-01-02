@@ -41,6 +41,29 @@ function setupEventListeners() {
     document.getElementById('settings-btn').addEventListener('click', () => showModal('settings-modal'));
     document.getElementById('close-settings').addEventListener('click', () => hideModal('settings-modal'));
 
+    // Settings - key method tabs
+    document.querySelectorAll('[data-key-method]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const method = e.target.dataset.keyMethod;
+            document.querySelectorAll('[data-key-method]').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            if (method === 'paste') {
+                document.getElementById('key-method-paste').classList.remove('hidden');
+                document.getElementById('key-method-upload').classList.add('hidden');
+            } else {
+                document.getElementById('key-method-paste').classList.add('hidden');
+                document.getElementById('key-method-upload').classList.remove('hidden');
+            }
+        });
+    });
+
+    // Settings - file upload
+    const fileInput = document.getElementById('private-key-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', handlePrivateKeyUpload);
+    }
+
     // Settings
     document.getElementById('save-private-key-btn').addEventListener('click', savePrivateKey);
     document.querySelectorAll('.theme-btn').forEach(btn => {
@@ -377,29 +400,26 @@ function parseDecryptedContent(data, type) {
 }
 
 async function importKeyFromPEM(pem, type) {
-    // Clean the PEM string - remove extra whitespace and normalize line endings
-    const cleanedPem = pem
-        .trim()
-        .replace(/[\r\n]+/g, '\n')
-        .replace(/\s*-----BEGIN/g, '-----BEGIN')
-        .replace(/-----END\s*/g, '-----END')
-        .replace(/-----/g, '-----\n')
-        .replace(/\n+/g, '\n');
-
     const pemHeader = type === 'public' ? '-----BEGIN PUBLIC KEY-----' : '-----BEGIN PRIVATE KEY-----';
     const pemFooter = type === 'public' ? '-----END PUBLIC KEY-----' : '-----END PRIVATE KEY-----';
 
-    const pemHeaderIndex = cleanedPem.indexOf(pemHeader);
-    const pemFooterIndex = cleanedPem.indexOf(pemFooter);
+    // Find headers
+    const pemHeaderIndex = pem.indexOf(pemHeader);
+    const pemFooterIndex = pem.indexOf(pemFooter);
 
     if (pemHeaderIndex === -1 || pemFooterIndex === -1) {
-        throw new Error('Invalid PEM format: missing headers');
+        throw new Error('Invalid PEM format: missing ' + type + ' key headers');
     }
 
-    const pemContents = cleanedPem.substring(pemHeaderIndex + pemHeader.length, pemFooterIndex).trim();
+    // Extract base64 content between headers
+    const pemContents = pem.substring(pemHeaderIndex + pemHeader.length, pemFooterIndex);
 
-    // Remove all whitespace including newlines for base64 decoding
+    // Remove all whitespace and newlines from base64 content
     const base64 = pemContents.replace(/[\s\n\r]/g, '');
+
+    if (base64.length === 0) {
+        throw new Error('Invalid PEM format: empty key data');
+    }
 
     const binaryDerString = atob(base64);
     const binaryDer = new Uint8Array(binaryDerString.length);
@@ -417,6 +437,23 @@ async function importKeyFromPEM(pem, type) {
 }
 
 // ===== Settings =====
+function handlePrivateKeyUpload(e) {
+    const file = e.target.files[0];
+    const fileNameDisplay = document.getElementById('uploaded-file-name');
+
+    if (file) {
+        fileNameDisplay.textContent = 'Selected: ' + file.name;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            document.getElementById('settings-private-key').value = event.target.result;
+        };
+        reader.readAsText(file);
+    } else {
+        fileNameDisplay.textContent = '';
+    }
+}
+
 function loadPrivateKeyFromStorage() {
     const savedKey = localStorage.getItem('privateKey');
     if (savedKey) {
