@@ -16,7 +16,6 @@ data/
 /frontend/frontend
 
 # Go module cache
-go.sum
 
 # OS files
 .DS_Store
