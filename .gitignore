@@ -35,3 +35,5 @@ Thumbs.db
 # Private keys (NEVER commit these!)
 *_private_key.txt
 private_key.pem
+backend/certs/
+frontend/certs/

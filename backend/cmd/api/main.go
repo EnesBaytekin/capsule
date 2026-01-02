@@ -68,9 +68,17 @@ func main() {
 	}
 
 	addr := fmt.Sprintf(":%s", port)
-	log.Printf("Starting Time Capsule API on %s", addr)
 
-	if err := http.ListenAndServe(addr, r); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+	// Use HTTPS if certificates are provided, otherwise HTTP
+	if cfg.TLSCertFile != "" && cfg.TLSKeyFile != "" {
+		log.Printf("Starting Time Capsule API on https://0.0.0.0%s (HTTPS mode)", addr)
+		if err := http.ListenAndServeTLS(addr, cfg.TLSCertFile, cfg.TLSKeyFile, r); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
+	} else {
+		log.Printf("Starting Time Capsule API on http://0.0.0.0%s (HTTP mode)", addr)
+		if err := http.ListenAndServe(addr, r); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
 	}
 }

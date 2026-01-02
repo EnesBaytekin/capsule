@@ -9,6 +9,8 @@ type Config struct {
 	DatabasePath string
 	StoragePath  string
 	JWTSecret    string
+	TLSCertFile  string
+	TLSKeyFile   string
 }
 
 // Load reads configuration from environment variables with sensible defaults
@@ -18,6 +20,8 @@ func Load() *Config {
 		DatabasePath: getEnv("DATABASE_PATH", "./data/capsule.db"),
 		StoragePath:  getEnv("STORAGE_PATH", "./data/users"),
 		JWTSecret:    getEnv("JWT_SECRET", "change-this-secret-in-production"),
+		TLSCertFile:  getEnv("TLS_CERT", ""),
+		TLSKeyFile:   getEnv("TLS_KEY", ""),
 	}
 }
 
