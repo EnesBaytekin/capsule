@@ -2,9 +2,9 @@
 // ALL encryption/decryption happens on client
 // Server NEVER sees plaintext or private keys
 
-// Dynamic API base URL - uses the same protocol and host as the frontend but port 8080
-// Automatically detects HTTP vs HTTPS
-const API_BASE = window.location.protocol + '//' + window.location.hostname + ':8080';
+// Dynamic API base URL - uses the same protocol and host as the frontend
+// Uses port 8443 for HTTPS, 8080 for HTTP
+const API_BASE = window.location.protocol + '//' + window.location.hostname + ':' + (window.location.protocol === 'https:' ? '8443' : '8080');
 
 // Global state
 let currentUser = null;

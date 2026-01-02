@@ -1,36 +1,41 @@
 services:
-  # Backend API
+  # Backend API - runs HTTPS when certificates are provided
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: capsule-backend
     ports:
-      - "8080:8080"
+      - "8443:8443"   # HTTPS (primary when certificates are available)
     volumes:
       # Persistent storage for database and encrypted files
       - backend-data:/app/data
+      # Mount SSL certificates
+      - ./backend/certs:/app/certs:ro
     environment:
-      - PORT=8080
+      - PORT=8443
       - DATABASE_PATH=/app/data/capsule.db
       - STORAGE_PATH=/app/data/users
       - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production-please}
+      - TLS_CERT=/app/certs/cert.pem
+      - TLS_KEY=/app/certs/key.pem
     restart: unless-stopped
     networks:
       - capsule-network
 
-  # Frontend Web UI
+  # Frontend Web UI with HTTPS
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.https
     container_name: capsule-frontend
     ports:
-      - "3000:3000"
+      - "3443:3443"   # HTTPS only (required for Web Crypto API)
+    volumes:
+      # Mount SSL certificates
+      - ./frontend/certs:/app/certs:ro
     depends_on:
       - backend
-    environment:
-      - PORT=3000
     restart: unless-stopped
     networks:
       - capsule-network
