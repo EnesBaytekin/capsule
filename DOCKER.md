@@ -1,14 +1,16 @@
 # Docker Deployment
 
-Time Capsule with HTTPS support. Certificates are auto-generated on first start.
+Time Capsule with HTTPS support. You need to generate SSL certificates before starting.
 
 ## Quick Start
 
 ```bash
+# 1. Generate SSL certificates
+./generate-certs.sh
+
+# 2. Start the application
 docker compose up -d --build
 ```
-
-That's it! Certificates are generated automatically.
 
 ## Access
 
@@ -21,6 +23,9 @@ Accept the self-signed certificate warning in your browser.
 ## Commands
 
 ```bash
+# Generate certificates
+./generate-certs.sh
+
 # Start
 docker compose up -d
 
@@ -30,7 +35,7 @@ docker compose logs -f
 # Stop
 docker compose down
 
-# Remove all data (including certs)
+# Remove data
 docker compose down -v
 ```
 
@@ -49,11 +54,13 @@ Create a `.env` file:
 JWT_SECRET=your-secret-here
 ```
 
-## How It Works
+## Certificates
 
-1. On first start, each container generates its own SSL certificate
-2. Certificates are stored in Docker volumes
-3. Both services run HTTPS only
+Certificates are stored in `./certs/`:
+- `cert.pem` - Certificate
+- `key.pem` - Private key
+
+This directory is gitignored for security.
 
 ## Why HTTPS?
 
@@ -65,10 +72,5 @@ Cannot read properties of undefined (reading 'generateKey')
 
 ## Production
 
-Replace auto-generated certificates with proper ones from Let's Encrypt or a CA.
-Mount them as volumes:
-```yaml
-volumes:
-  - ./certs/cert.pem:/app/certs/cert.pem:ro
-  - ./certs/key.pem:/app/certs/key.pem:ro
-```
+Replace self-signed certificates with proper ones from Let's Encrypt or a CA.
+Place them in `./certs/cert.pem` and `./certs/key.pem`.

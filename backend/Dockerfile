@@ -22,7 +22,7 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache sqlite-libs ca-certificates openssl
+RUN apk add --no-cache sqlite-libs ca-certificates
 
 # Copy the binary from builder
 COPY --from=builder /app/api .

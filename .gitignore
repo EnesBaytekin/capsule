@@ -37,3 +37,4 @@ Thumbs.db
 private_key.pem
 backend/certs/
 frontend/certs/
+certs/
