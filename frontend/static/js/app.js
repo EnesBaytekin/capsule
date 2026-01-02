@@ -2,7 +2,9 @@
 // ALL encryption/decryption happens on client
 // Server NEVER sees plaintext or private keys
 
-const API_BASE = 'http://localhost:8080';
+// Dynamic API base URL - uses the same host as the frontend but port 8080
+// This works whether accessing from localhost, a LAN IP, or a domain name
+const API_BASE = window.location.protocol + '//' + window.location.hostname + ':8080';
 
 // Global state
 let currentUser = null;
@@ -553,11 +555,13 @@ async function handleUpload(e) {
             document.getElementById('file-name').textContent = '';
             loadCapsules();
         } else {
-            showToast('Upload failed', 'error');
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.error('Upload failed:', response.status, errorData);
+            showToast('Upload failed: ' + (errorData.error || 'Unknown error'), 'error');
         }
     } catch (error) {
         console.error('Upload error:', error);
-        showToast('Upload failed', 'error');
+        showToast('Upload failed: ' + error.message, 'error');
     }
 }
 
@@ -567,6 +571,9 @@ async function encryptData(data) {
     const encryptedData = await window.crypto.subtle.encrypt({ name: 'AES-GCM', iv: nonce }, aesKey, data);
     const aesKeyRaw = await window.crypto.subtle.exportKey('raw', aesKey);
     const response = await fetch(API_BASE + '/keys/public', { headers: { 'Authorization': 'Bearer ' + token } });
+    if (!response.ok) {
+        throw new Error('Failed to fetch public key: HTTP ' + response.status);
+    }
     const { public_key: publicKeyPEM } = await response.json();
     const publicKey = await importKeyFromPEM(publicKeyPEM, 'public');
     const encryptedAESKey = await window.crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKey, aesKeyRaw);
