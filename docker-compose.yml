@@ -9,7 +9,7 @@ services:
       - "8443:8443"
     volumes:
       - backend-data:/app/data
-      - ./backend/certs:/app/certs:ro
+      - backend-certs:/app/certs
     environment:
       - PORT=8443
       - DATABASE_PATH=/app/data/capsule.db
@@ -30,7 +30,7 @@ services:
     ports:
       - "3443:3443"
     volumes:
-      - ./frontend/certs:/app/certs:ro
+      - frontend-certs:/app/certs
     depends_on:
       - backend
     restart: unless-stopped
@@ -39,6 +39,10 @@ services:
 
 volumes:
   backend-data:
+    driver: local
+  backend-certs:
+    driver: local
+  frontend-certs:
     driver: local
 
 networks:

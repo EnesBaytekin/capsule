@@ -4,7 +4,7 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Install build dependencies
-RUN apk add --no-cache gcc musl-dev sqlite-dev
+RUN apk add --no-cache gcc musl-dev sqlite-dev openssl
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -22,10 +22,14 @@ FROM alpine:latest
 WORKDIR /app
 
 # Install runtime dependencies
-RUN apk add --no-cache sqlite-libs ca-certificates
+RUN apk add --no-cache sqlite-libs ca-certificates openssl
 
 # Copy the binary from builder
 COPY --from=builder /app/api .
+
+# Copy entrypoint script
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
 
 # Create data directories
 RUN mkdir -p /app/data /app/certs
@@ -39,5 +43,5 @@ ENV DATABASE_PATH=/app/data/capsule.db
 ENV STORAGE_PATH=/app/data/users
 ENV JWT_SECRET=change-this-secret-in-production
 
-# Run the application
-CMD ["./api"]
+# Run entrypoint script
+CMD ["/app/docker-entrypoint.sh"]

@@ -1,17 +1,14 @@
 # Docker Deployment
 
-Time Capsule with HTTPS support using self-signed certificates.
+Time Capsule with HTTPS support. Certificates are auto-generated on first start.
 
 ## Quick Start
 
 ```bash
-./docker-setup.sh
+docker compose up -d --build
 ```
 
-This will:
-1. Generate SSL certificates
-2. Build and start services
-3. Run on HTTPS only
+That's it! Certificates are generated automatically.
 
 ## Access
 
@@ -21,48 +18,20 @@ This will:
 
 Accept the self-signed certificate warning in your browser.
 
-## Manual Setup
-
-### 1. Generate Certificates
-
-```bash
-mkdir -p backend/certs frontend/certs
-
-openssl req -x509 -newkey rsa:4096 -keyout backend/certs/key.pem \
-  -out backend/certs/cert.pem -days 365 -nodes \
-  -subj "/C=US/ST=State/L=City/O=Dev/CN=localhost"
-
-openssl req -x509 -newkey rsa:4096 -keyout frontend/certs/key.pem \
-  -out frontend/certs/cert.pem -days 365 -nodes \
-  -subj "/C=US/ST=State/L=City/O=Dev/CN=localhost"
-```
-
-### 2. Start Services
-
-```bash
-docker-compose up --build
-```
-
-Or run in background:
-
-```bash
-docker-compose up -d --build
-```
-
 ## Commands
 
 ```bash
 # Start
-docker-compose up -d
+docker compose up -d
 
 # View logs
-docker-compose logs -f
+docker compose logs -f
 
 # Stop
-docker-compose down
+docker compose down
 
-# Remove data
-docker-compose down -v
+# Remove all data (including certs)
+docker compose down -v
 ```
 
 ## Ports
@@ -74,9 +43,17 @@ docker-compose down -v
 
 ## Environment Variables
 
-Set in `.env` or docker-compose.yml:
+Create a `.env` file:
 
-- `JWT_SECRET`: Secret for JWT tokens (change in production!)
+```env
+JWT_SECRET=your-secret-here
+```
+
+## How It Works
+
+1. On first start, each container generates its own SSL certificate
+2. Certificates are stored in Docker volumes
+3. Both services run HTTPS only
 
 ## Why HTTPS?
 
@@ -88,4 +65,10 @@ Cannot read properties of undefined (reading 'generateKey')
 
 ## Production
 
-Replace self-signed certificates with proper ones from Let's Encrypt or a CA.
+Replace auto-generated certificates with proper ones from Let's Encrypt or a CA.
+Mount them as volumes:
+```yaml
+volumes:
+  - ./certs/cert.pem:/app/certs/cert.pem:ro
+  - ./certs/key.pem:/app/certs/key.pem:ro
+```
