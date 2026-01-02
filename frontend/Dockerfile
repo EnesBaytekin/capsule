@@ -6,8 +6,9 @@ RUN apk add --no-cache nginx openssl
 
 WORKDIR /app
 
-# Copy static files
+# Copy static files and templates
 COPY static /usr/share/nginx/html
+COPY templates/index.html /usr/share/nginx/html/index.html
 
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
