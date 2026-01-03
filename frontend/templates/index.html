@@ -197,53 +197,68 @@
                 </button>
             </div>
             <div class="modal-body">
-                <!-- Private Key Section (only show when logged in) -->
-                <div id="settings-private-key-section" class="settings-section" style="display: none;">
-                    <h3>🔐 Private Key</h3>
-                    <p class="help-text">Add your private key to decrypt your memories. This key is never sent to the server.</p>
-
-                    <!-- Tab buttons -->
-                    <div class="auth-tabs" style="margin-bottom: 1rem;">
-                        <button class="auth-tab active" data-key-method="paste">Paste Key</button>
-                        <button class="auth-tab" data-key-method="upload">Upload File</button>
-                    </div>
-
-                    <!-- Paste method -->
-                    <div id="key-method-paste">
-                        <div class="form-group">
-                            <textarea id="settings-private-key" placeholder="Paste your private key here..." rows="6"></textarea>
-                        </div>
-                    </div>
-
-                    <!-- Upload method -->
-                    <div id="key-method-upload" class="hidden">
-                        <div class="form-group">
-                            <label class="file-label" style="width: 100%; display: flex; justify-content: center;">
-                                <input type="file" id="private-key-file" accept=".txt,.pem,.key" style="display: none;">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                    <polyline points="17 8 12 3 7 8"></polyline>
-                                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                                </svg>
-                                <span style="margin-left: 8px;">Select private key file</span>
-                            </label>
-                        </div>
-                        <div id="uploaded-file-name" class="text-muted"></div>
-                    </div>
-
-                    <button id="save-private-key-btn" class="btn btn-primary btn-block">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-                            <polyline points="17 21 17 13 7 13 7 21"></polyline>
-                            <polyline points="7 3 7 8 15 8"></polyline>
-                        </svg>
-                        Save & Decrypt Memories
-                    </button>
-                    <div id="key-status" class="key-status"></div>
+                <!-- Settings Tabs -->
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-settings-tab="private-key">🔐 Private Key</button>
+                    <button class="settings-tab" data-settings-tab="theme">🌙 Theme</button>
+                    <button class="settings-tab" data-settings-tab="about">ℹ️ About</button>
                 </div>
 
-                <div class="settings-section">
-                    <h3>🌙 Theme</h3>
+                <!-- Private Key Tab Content -->
+                <div id="settings-tab-private-key" class="settings-tab-content active">
+                    <div id="settings-private-key-section" style="display: none;">
+                        <p class="help-text" style="margin-bottom: 1rem;">Add your private key to decrypt your memories. This key is never sent to the server.</p>
+
+                        <!-- Tab buttons -->
+                        <div class="auth-tabs" style="margin-bottom: 1rem;">
+                            <button class="auth-tab active" data-key-method="paste">Paste Key</button>
+                            <button class="auth-tab" data-key-method="upload">Upload File</button>
+                        </div>
+
+                        <!-- Paste method -->
+                        <div id="key-method-paste">
+                            <div class="form-group">
+                                <textarea id="settings-private-key" placeholder="Paste your private key here..." rows="6"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Upload method -->
+                        <div id="key-method-upload" class="hidden">
+                            <div class="form-group">
+                                <label class="file-label" style="width: 100%; display: flex; justify-content: center;">
+                                    <input type="file" id="private-key-file" accept=".txt,.pem,.key" style="display: none;">
+                                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                    <span style="margin-left: 8px;">Select private key file</span>
+                                </label>
+                            </div>
+                            <div id="uploaded-file-name" class="text-muted"></div>
+                        </div>
+
+                        <button id="save-private-key-btn" class="btn btn-primary btn-block">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            Save & Decrypt Memories
+                        </button>
+                        <div id="key-status" class="key-status"></div>
+                    </div>
+                    <div id="settings-private-key-not-logged-in" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <p>Please log in to manage your private key</p>
+                    </div>
+                </div>
+
+                <!-- Theme Tab Content -->
+                <div id="settings-tab-theme" class="settings-tab-content">
                     <div class="theme-options">
                         <button class="theme-btn" data-theme="system">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -276,10 +291,15 @@
                     </div>
                 </div>
 
-                <div class="settings-section">
-                    <h3>ℹ️ About</h3>
-                    <p class="text-muted">Time Capsule v1.0 - Zero-knowledge encrypted storage</p>
-                    <p class="text-muted">Your data is encrypted on your device before upload. The server never sees your private keys or decrypted content.</p>
+                <!-- About Tab Content -->
+                <div id="settings-tab-about" class="settings-tab-content">
+                    <div style="text-align: center; padding: 1rem;">
+                        <h3 style="margin-bottom: 0.5rem;">Time Capsule</h3>
+                        <p class="text-muted" style="margin-bottom: 1rem;">Version 1.0</p>
+                        <p class="text-muted" style="margin-bottom: 0.5rem;">Zero-knowledge encrypted storage for your memories.</p>
+                        <p class="text-muted" style="margin-bottom: 1rem;">Your data is encrypted on your device before upload. The server never sees your private keys or decrypted content.</p>
+                        <p class="text-muted">Built with ❤️ using Go and vanilla JavaScript</p>
+                    </div>
                 </div>
             </div>
         </div>

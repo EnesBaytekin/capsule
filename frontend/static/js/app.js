@@ -85,6 +85,23 @@ function setupEventListeners() {
         openSettingsKeyBtn.addEventListener('click', () => showModal('settings-modal'));
     }
 
+    // Settings modal tabs
+    document.querySelectorAll('.settings-tab').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const tabName = e.target.dataset.settingsTab;
+
+            // Update tab buttons
+            document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
+            e.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.settings-tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById('settings-tab-' + tabName).classList.add('active');
+        });
+    });
+
     // Private key modal buttons
     const closeKeyModalBtn = document.getElementById('close-key-modal');
     if (closeKeyModalBtn) {
@@ -328,10 +345,14 @@ function handleLogout() {
     // Hide username from header
     document.getElementById('header-username').style.display = 'none';
 
-    // Hide private key section in settings (user is logged out)
+    // Hide private key section, show "not logged in" message in settings
     const settingsKeySection = document.getElementById('settings-private-key-section');
+    const settingsKeyNotLoggedIn = document.getElementById('settings-private-key-not-logged-in');
     if (settingsKeySection) {
         settingsKeySection.style.display = 'none';
+    }
+    if (settingsKeyNotLoggedIn) {
+        settingsKeyNotLoggedIn.style.display = 'block';
     }
 
     // Clear all state and revoke blob URLs
@@ -370,10 +391,14 @@ function showDashboard() {
     headerUsername.textContent = currentUser;
     headerUsername.style.display = 'block';
 
-    // Show private key section in settings (user is logged in)
+    // Show private key section, hide "not logged in" message in settings
     const settingsKeySection = document.getElementById('settings-private-key-section');
+    const settingsKeyNotLoggedIn = document.getElementById('settings-private-key-not-logged-in');
     if (settingsKeySection) {
         settingsKeySection.style.display = 'block';
+    }
+    if (settingsKeyNotLoggedIn) {
+        settingsKeyNotLoggedIn.style.display = 'none';
     }
 
     // Reset state and setup
