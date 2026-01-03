@@ -14,7 +14,7 @@ services:
       - PORT=8443
       - DATABASE_PATH=/app/data/capsule.db
       - STORAGE_PATH=/app/data/users
-      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - JWT_SECRET=${JWT_SECRET}
       - TLS_CERT=/app/certs/cert.pem
       - TLS_KEY=/app/certs/key.pem
     restart: unless-stopped
