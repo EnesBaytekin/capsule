@@ -29,87 +29,6 @@ The application is designed to be **self-hosted**, giving you full control over 
 - Simple and modern web interface
 - Fully self-hosted with Docker
 
-## 👤 Typical User Flow
-
-1. Register and log in
-2. Generate a cryptographic key pair (client-side)
-3. Download and safely store your private key
-4. Add text or image memories (encrypted locally)
-5. Later, load your private key to view and decrypt your memories
-
-If you lose your private key, your data is permanently inaccessible.\
-This is an intentional trade-off for strong privacy.
-
-## 🏗️ Architecture
-```
-┌─────────────────────────────────┐                                   
-│ Local Machine                   │                                   
-│               ┌─────────┐       │                                   
-│               │ private │       │                                   
-│               └────▲──┬─┘       │                                   
-│ ┌──────────────────┼──┼───────┐ │           ┌──────────────────────┐
-│ │ Browser          │  │       │ │           │ Server               │
-│ │                  │  │       │ │           │                      │
-│ │                  │  │       │ │           │                      │
-│ │ Register:        │  │       │ │           │                      │
-│ │                  │  │       │ │           │ ┌──────────────────┐ │
-│ │ ┌────────────┐   │  │       │ │           │ │ SQLite           │ │
-│ │ │ Key Pair   │   │  │       │ │           │ │                  │ │
-│ │ │┌─────────┐ │   │  │       │ │           │ │                  │ │
-│ │ ││ private │─┼───┘  │       │ │           │ │                  │ │
-│ │ │└─────────┘ │      │       │ │           │ │                  │ │
-│ │ │┌────────┐  │      │       │ │           │ │   ┌────────┐     │ │
-│ │ ││ public │──┼──────┼───────┼─┼─►─HTTPS─►─┼─┼──►│ public │     │ │
-│ │ │└────────┘  │      │       │ │           │ │   └───┬────┘     │ │
-│ │ └────────────┘      │       │ │           │ │       │          │ │
-│ │                     │       │ │           │ │       │          │ │
-│ │            ┌────────┘       │ │           │ │       │          │ │
-│ │ Upload:    │                │ │           │ │       │          │ │
-│ │            │     ┌───────┐  │ │           │ │       │          │ │
-│ │            │     │ Plain │  │ │           │ │       │          │ │
-│ │            │     │ Data  │  │ │           │ │       │          │ │
-│ │            │     └───┬───┘  │ │           │ │       │          │ │
-│ │            │         │      │ │           │ │       │          │ │
-│ │            │         ■──────┼─┼─◄─HTTPS─◄─┼─┼───────┘          │ │
-│ │            │         │      │ │           │ │                  │ │
-│ │            │         │      │ │           │ │                  │ │
-│ │            │    ┌────▼────┐ │ │           │ │   ┌─────────┐    │ │
-│ │            │    │Encrypted│ │ │           │ │   │Encrypted│    │ │
-│ │            │    │  Data   │─┼─┼─►─HTTPS─►─┼─┼──►│  Data   │    │ │
-│ │            │    └─────────┘ │ │           │ │   └───┬─────┘    │ │
-│ │ View:      │                │ │           │ │       │          │ │
-│ │            │                │ │           │ │       │          │ │
-│ │ ┌───────┐  │  ┌─────────┐   │ │           │ │       │          │ │
-│ │ │ Plain │  │  │Encrypted│   │ │           │ │       │          │ │
-│ │ │ Data  │◄─■──│  Data   │◄──┼─┼─◄─HTTPS─◄─┼─┼───────┘          │ │
-│ │ └───────┘     └─────────┘   │ │           │ │                  │ │
-│ │                             │ │           │ │                  │ │
-│ └─────────────────────────────┘ │           │ └──────────────────┘ │
-│                                 │           │                      │
-└─────────────────────────────────┘           └──────────────────────┘
-```
-
-The backend never decrypts any data.
-
-## 🛠 Tech Stack
-
-### Backend
-
-- Go
-- SQLite
-- JWT authentication
-
-### Frontend
-
-- HTML / CSS / JavaScript
-- Web Crypto API
-
-### Infrastructure
-
-- Docker
-- Docker Compose
-- Persistent volumes
-
 ## 🚀 Getting Started
 
 ### Requirements
@@ -154,6 +73,87 @@ docker compose up -d
 The application will be available at:
 
 ```
-https://localhost:3000
+https://localhost:3443
 ```
 
+## 👤 Typical User Flow
+
+1. Register and log in
+2. Generate a cryptographic key pair (client-side)
+3. Download and safely store your private key
+4. Add text or image memories (encrypted locally)
+5. Later, load your private key to view and decrypt your memories
+
+If you lose your private key, your data is permanently inaccessible.\
+This is an intentional trade-off for strong privacy.
+
+## 🏗️ Architecture
+```
+.---------------------------------.                                   
+| Local Machine                   |                                   
+|               .---------.       |                                   
+|               | private |       |                                   
+|               '----^----'       |                                   
+|                    |  |         |                                   
+| .------------------|--|-------. |           .----------------------.
+| | Browser          |  |       | |           | Server               |
+| |                  |  |       | |           |                      |
+| |                  |  |       | |           |                      |
+| | Register:        |  |       | |           |                      |
+| |                  |  |       | |           | .------------------. |
+| | .------------.   |  |       | |           | | SQLite           | |
+| | | Key Pair   |   |  |       | |           | |                  | |
+| | |.---------. |   |  |       | |           | |                  | |
+| | || private |-----'  |       | |           | |                  | |
+| | |'---------' |      |       | |           | |                  | |
+| | |.--------.  |      |       | |           | |   .--------.     | |
+| | || public |---------|----------->-HTTPS->------>| public |     | |
+| | |'--------'  |      |       | |           | |   '--------'     | |
+| | '------------'      |       | |           | |       |          | |
+| |                     |       | |           | |       |          | |
+| |            .--------'       | |           | |       |          | |
+| | Upload:    |                | |           | |       |          | |
+| |            |     .-------.  | |           | |       |          | |
+| |            |     | Plain |  | |           | |       |          | |
+| |            |     | Data  |  | |           | |       |          | |
+| |            |     '-------'  | |           | |       |          | |
+| |            |         |      | |           | |       |          | |
+| |            |         o----------<-HTTPS-<-----------'          | |
+| |            |         |      | |           | |                  | |
+| |            |         |      | |           | |                  | |
+| |            |    .----v----. | |           | |   .---------.    | |
+| |            |    |Encrypted| | |           | |   |Encrypted|    | |
+| |            |    |  Data   |----->-HTTPS->------>|  Data   |    | |
+| |            |    '---------' | |           | |   '---------'    | |
+| | View:      |                | |           | |       |          | |
+| |            |                | |           | |       |          | |
+| | .-------.  |  .---------.   | |           | |       |          | |
+| | | Plain |  |  |Encrypted|   | |           | |       |          | |
+| | | Data  |<-o--|  Data   |<------<-HTTPS-<-----------'          | |
+| | '-------'     '---------'   | |           | |                  | |
+| |                             | |           | |                  | |
+| '-----------------------------' |           | '------------------' |
+|                                 |           |                      |
+'---------------------------------'           '----------------------'
+```
+
+The backend never decrypts any data.
+
+## 🛠 Tech Stack
+
+### Backend
+
+- Go
+- SQLite
+- JWT authentication
+
+### Frontend
+
+- HTML / CSS / JavaScript
+- Web Crypto API
+
+### Infrastructure
+
+- Docker
+- Docker Compose
+- Persistent volumes
