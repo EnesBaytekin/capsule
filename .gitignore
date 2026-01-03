@@ -12,6 +12,7 @@ data/
 
 # Go build artifacts
 /backend/api
+/backend/capsule-server
 /frontend/frontend
 
 # OS files

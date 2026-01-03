@@ -77,6 +77,38 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(models.AuthResponse{Token: token})
 }
 
+// CheckUsername checks if a username is available
+// Public endpoint that returns 404 if username is available, 200 if taken
+func (h *AuthHandler) CheckUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		http.Error(w, "Username parameter is required", http.StatusBadRequest)
+		return
+	}
+
+	// Check if username exists in database
+	var exists bool
+	err := h.db.QueryRow(
+		"SELECT EXISTS(SELECT 1 FROM users WHERE username = ?)",
+		username,
+	).Scan(&exists)
+
+	if err != nil {
+		http.Error(w, "Failed to check username", http.StatusInternalServerError)
+		return
+	}
+
+	if exists {
+		// Username is taken
+		w.WriteHeader(http.StatusOK)
+		json.NewEncoder(w).Encode(map[string]bool{"available": false})
+	} else {
+		// Username is available
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]bool{"available": true})
+	}
+}
+
 // Login handles user authentication
 // Returns a JWT token on successful authentication
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {

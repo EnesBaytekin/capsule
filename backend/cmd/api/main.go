@@ -50,6 +50,7 @@ func main() {
 	// Public routes
 	r.HandleFunc("/auth/register", authHandler.Register).Methods("POST", "OPTIONS")
 	r.HandleFunc("/auth/login", authHandler.Login).Methods("POST", "OPTIONS")
+	r.HandleFunc("/auth/check-username", authHandler.CheckUsername).Methods("GET", "OPTIONS")
 
 	// Protected routes
 	protected := r.PathPrefix("").Subrouter()

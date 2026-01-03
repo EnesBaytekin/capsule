@@ -82,15 +82,46 @@ func (h *CapsuleHandler) UploadCapsule(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// ListCapsules returns all capsules for the authenticated user
+// ListCapsules returns paginated capsules for the authenticated user
 // Note: We only return metadata, not the actual encrypted content
 func (h *CapsuleHandler) ListCapsules(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r)
 
-	// Query capsules for this user
+	// Parse pagination parameters
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	page := 1
+	if pageStr != "" {
+		if p, err := strconv.Atoi(pageStr); err == nil && p >= 1 {
+			page = p
+		}
+	}
+
+	limit := 20
+	if limitStr != "" {
+		if l, err := strconv.Atoi(limitStr); err == nil && l >= 1 && l <= 50 {
+			limit = l
+		}
+	}
+
+	// Get total count
+	var totalCount int64
+	err := h.db.QueryRow("SELECT COUNT(*) FROM capsules WHERE user_id = ?", userID).Scan(&totalCount)
+	if err != nil {
+		http.Error(w, "Failed to count capsules", http.StatusInternalServerError)
+		return
+	}
+
+	// Calculate offset
+	offset := (page - 1) * limit
+
+	// Query paginated capsules
 	rows, err := h.db.Query(
-		"SELECT id, type, file_path, created_at FROM capsules WHERE user_id = ? ORDER BY created_at DESC",
+		"SELECT id, type, file_path, created_at FROM capsules WHERE user_id = ? ORDER BY created_at DESC LIMIT ? OFFSET ?",
 		userID,
+		limit,
+		offset,
 	)
 
 	if err != nil {
@@ -100,7 +131,6 @@ func (h *CapsuleHandler) ListCapsules(w http.ResponseWriter, r *http.Request) {
 	defer rows.Close()
 
 	var capsules []models.Capsule
-	// Initialize as empty slice to return [] instead of null in JSON
 	capsules = make([]models.Capsule, 0)
 
 	for rows.Next() {
@@ -112,8 +142,20 @@ func (h *CapsuleHandler) ListCapsules(w http.ResponseWriter, r *http.Request) {
 		capsules = append(capsules, c)
 	}
 
+	// Calculate if there are more pages
+	hasMore := int64(page*limit) < totalCount
+
+	// Build paginated response
+	response := map[string]interface{}{
+		"capsules":    capsules,
+		"total_count": totalCount,
+		"page":        page,
+		"limit":       limit,
+		"has_more":    hasMore,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(capsules)
+	json.NewEncoder(w).Encode(response)
 }
 
 // DownloadCapsule downloads an encrypted capsule

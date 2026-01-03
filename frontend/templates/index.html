@@ -11,6 +11,7 @@
     <header class="header">
         <div class="header-content">
             <h1 class="logo">🔒 Time Capsule</h1>
+            <div id="header-username" class="header-username" style="display: none;"></div>
             <nav class="nav">
                 <button id="settings-btn" class="icon-btn" title="Settings">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -60,36 +61,20 @@
                 <form id="register-form" class="auth-form hidden">
                     <div class="form-group">
                         <label for="register-username">Username</label>
-                        <input type="text" id="register-username" required>
+                        <input type="text" id="register-username" required autocomplete="off">
+                        <div id="username-status" class="username-status"></div>
                     </div>
                     <div class="form-group">
                         <label for="register-password">Password</label>
                         <input type="password" id="register-password" required>
                     </div>
-                    <div class="form-group">
-                        <label>Encryption Keys</label>
-                        <p class="help-text">Generate keys to encrypt your data. Save your private key securely - you'll need it to decrypt your memories!</p>
-                        <button type="button" id="generate-keys-btn" class="btn btn-secondary btn-block">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                            </svg>
-                            Generate Encryption Keys
-                        </button>
-                    </div>
-                    <div id="key-display" class="key-display hidden">
-                        <label for="private-key-display">Your Private Key</label>
-                        <textarea id="private-key-display" readonly></textarea>
-                        <button type="button" id="download-key-btn" class="btn btn-success btn-block">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                                <polyline points="7 10 12 15 17 10"></polyline>
-                                <line x1="12" y1="15" x2="12" y2="3"></line>
-                            </svg>
-                            Download Private Key
-                        </button>
-                    </div>
-                    <button type="submit" class="btn btn-primary btn-block" id="register-submit-btn" disabled>Register</button>
+                    <button type="submit" class="btn btn-primary btn-block" id="register-submit-btn" disabled>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        Generate Keys & Register
+                    </button>
                 </form>
             </div>
         </div>
@@ -98,6 +83,30 @@
     <!-- Dashboard View -->
     <div id="dashboard-view" class="view">
         <div class="container">
+            <!-- Key Banner -->
+            <div id="key-banner" class="key-banner hidden">
+                <div class="key-banner-content">
+                    <div class="key-banner-icon">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                        </svg>
+                    </div>
+                    <div class="key-banner-text">
+                        <strong>Add your private key to decrypt memories</strong>
+                        <p>Your key never leaves this device</p>
+                    </div>
+                    <button id="key-banner-upload-btn" class="btn btn-primary btn-sm">
+                        Add Key
+                    </button>
+                    <button id="key-banner-dismiss" class="icon-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
             <!-- Upload Box -->
             <div class="upload-box">
                 <div class="upload-header">
@@ -133,6 +142,32 @@
                 </form>
             </div>
 
+            <!-- Last Upload Indicator -->
+            <div id="last-upload-indicator" class="last-upload-indicator hidden">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                <span>Last upload: <strong id="last-upload-time">-</strong></span>
+            </div>
+
+            <!-- Private Key Required Message -->
+            <div id="private-key-section" class="private-key-section">
+                <div class="private-key-prompt">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    <h3>Private Key Required</h3>
+                    <p>Add your private key in settings to decrypt and view your encrypted memories</p>
+                    <button id="open-settings-key-btn" class="btn btn-primary">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                        </svg>
+                        Open Settings
+                    </button>
+                </div>
+            </div>
+
             <!-- Feed -->
             <div id="feed" class="feed">
                 <!-- Capsules will be rendered here -->
@@ -162,7 +197,8 @@
                 </button>
             </div>
             <div class="modal-body">
-                <div class="settings-section">
+                <!-- Private Key Section (only show when logged in) -->
+                <div id="settings-private-key-section" class="settings-section" style="display: none;">
                     <h3>🔐 Private Key</h3>
                     <p class="help-text">Add your private key to decrypt your memories. This key is never sent to the server.</p>
 
@@ -245,6 +281,52 @@
                     <p class="text-muted">Time Capsule v1.0 - Zero-knowledge encrypted storage</p>
                     <p class="text-muted">Your data is encrypted on your device before upload. The server never sees your private keys or decrypted content.</p>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Private Key Modal (shown after registration) -->
+    <div id="private-key-modal" class="modal hidden">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>🔐 Your Private Key</h2>
+                <button class="close-btn" id="close-key-modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="key-warning" style="background: #fef3c7; color: #78350f; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; border: 2px solid #f59e0b;">
+                    <strong style="color: #92400e;">⚠️ Important: Save your private key now!</strong>
+                    <p style="margin: 0.5rem 0 0 0; color: #78350f; font-weight: 500;">This key is required to decrypt your memories. It cannot be recovered if lost. Download it and store it securely.</p>
+                </div>
+                <div class="form-group">
+                    <label>Private Key (copy this securely)</label>
+                    <textarea id="modal-private-key" readonly style="font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace; font-size: 0.75rem; line-height: 1.4;"></textarea>
+                </div>
+                <div class="key-actions" style="display: flex; gap: 1rem;">
+                    <button id="copy-key-btn" class="btn btn-primary" style="flex: 1;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Copy to Clipboard
+                    </button>
+                    <button id="download-key-modal-btn" class="btn btn-success" style="flex: 1;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        Download Key
+                    </button>
+                </div>
+                <p class="text-muted" style="text-align: center; margin-top: 1rem;">Click "Continue" when you have saved your key</p>
+                <button id="continue-after-key-btn" class="btn btn-primary btn-block" style="margin-top: 1rem;">
+                    Continue to Time Capsule
+                </button>
             </div>
         </div>
     </div>
