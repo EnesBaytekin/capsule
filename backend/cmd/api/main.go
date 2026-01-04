@@ -10,6 +10,7 @@ import (
 	"capsule/internal/handlers"
 	"capsule/internal/middleware"
 	"capsule/internal/storage"
+	"capsule/internal/whitelist"
 
 	"github.com/gorilla/mux"
 )
@@ -36,8 +37,20 @@ func main() {
 		log.Fatalf("Failed to initialize storage: %v", err)
 	}
 
+	// Initialize whitelist manager
+	whitelistManager, err := whitelist.New(cfg.UseWhitelist, cfg.WhitelistFile)
+	if err != nil {
+		log.Fatalf("Failed to initialize whitelist manager: %v", err)
+	}
+	if cfg.UseWhitelist {
+		log.Printf("Whitelist enabled, watching file: %s", cfg.WhitelistFile)
+	} else {
+		log.Println("Whitelist disabled")
+	}
+	defer whitelistManager.Stop()
+
 	// Initialize handlers
-	authHandler := handlers.NewAuthHandler(db, cfg)
+	authHandler := handlers.NewAuthHandler(db, cfg, whitelistManager)
 	keyHandler := handlers.NewKeyHandler(db)
 	capsuleHandler := handlers.NewCapsuleHandler(db, fileStorage)
 

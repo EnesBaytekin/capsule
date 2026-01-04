@@ -10,6 +10,7 @@ services:
     volumes:
       - backend-data:/app/data
       - ./certs:/app/certs:ro
+      - ./config:/app/config:ro
     environment:
       - PORT=8443
       - DATABASE_PATH=/app/data/capsule.db
@@ -17,6 +18,8 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - TLS_CERT=/app/certs/cert.pem
       - TLS_KEY=/app/certs/key.pem
+      - USE_WHITELIST=${USE_WHITELIST:-false}
+      - WHITELIST_FILE=/app/config/whitelist.txt
     restart: unless-stopped
     networks:
       - capsule-network

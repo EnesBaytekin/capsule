@@ -5,6 +5,7 @@ import (
 	"capsule/internal/config"
 	"capsule/internal/middleware"
 	"capsule/internal/models"
+	"capsule/internal/whitelist"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -13,14 +14,16 @@ import (
 )
 
 type AuthHandler struct {
-	db  *sql.DB
-	cfg *config.Config
+	db         *sql.DB
+	cfg        *config.Config
+	whitelist  *whitelist.Manager
 }
 
-func NewAuthHandler(db *sql.DB, cfg *config.Config) *AuthHandler {
+func NewAuthHandler(db *sql.DB, cfg *config.Config, wl *whitelist.Manager) *AuthHandler {
 	return &AuthHandler{
-		db:  db,
-		cfg: cfg,
+		db:        db,
+		cfg:       cfg,
+		whitelist: wl,
 	}
 }
 
@@ -37,6 +40,14 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	// Validate input
 	if req.Username == "" || req.Password == "" || req.PublicKey == "" {
 		http.Error(w, "Username, password, and public key are required", http.StatusBadRequest)
+		return
+	}
+
+	// Check whitelist if enabled
+	if h.whitelist != nil && !h.whitelist.IsAllowed(req.Username) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Username is not in the registration whitelist"})
 		return
 	}
 
