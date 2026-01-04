@@ -3,6 +3,7 @@ package handlers
 import (
 	"capsule/internal/auth"
 	"capsule/internal/config"
+	"capsule/internal/middleware"
 	"capsule/internal/models"
 	"database/sql"
 	"encoding/json"
@@ -162,4 +163,72 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	// Return token
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(models.AuthResponse{Token: token})
+}
+
+// ChangePassword handles password changes for authenticated users
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r)
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Validate input
+	if req.CurrentPassword == "" || req.NewPassword == "" {
+		http.Error(w, "Current password and new password are required", http.StatusBadRequest)
+		return
+	}
+
+	// Password length validation
+	if len(req.NewPassword) < 8 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "New password must be at least 8 characters"})
+		return
+	}
+
+	// Retrieve user's current password hash
+	var currentPasswordHash string
+	err := h.db.QueryRow("SELECT password_hash FROM users WHERE id = ?", userID).Scan(&currentPasswordHash)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			http.Error(w, "User not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to query database", http.StatusInternalServerError)
+		return
+	}
+
+	// Verify current password
+	if err := bcrypt.CompareHashAndPassword([]byte(currentPasswordHash), []byte(req.CurrentPassword)); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Current password is incorrect"})
+		return
+	}
+
+	// Hash new password
+	newHashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), 12)
+	if err != nil {
+		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		return
+	}
+
+	// Update password in database
+	_, err = h.db.Exec("UPDATE users SET password_hash = ? WHERE id = ?", string(newHashedPassword), userID)
+	if err != nil {
+		http.Error(w, "Failed to update password", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Password changed successfully"})
 }

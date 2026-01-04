@@ -200,13 +200,14 @@
             <div class="modal-body">
                 <!-- Settings Tabs -->
                 <div class="settings-tabs">
-                    <button class="settings-tab active" data-settings-tab="private-key">🔐 Private Key</button>
-                    <button class="settings-tab" data-settings-tab="theme">🌙 Theme</button>
+                    <button class="settings-tab auth-only-tab" data-settings-tab="private-key" id="tab-private-key">🔐 Private Key</button>
+                    <button class="settings-tab auth-only-tab" data-settings-tab="change-password" id="tab-change-password">🔑 Change Password</button>
+                    <button class="settings-tab active" data-settings-tab="theme">🌙 Theme</button>
                     <button class="settings-tab" data-settings-tab="about">ℹ️ About</button>
                 </div>
 
                 <!-- Private Key Tab Content -->
-                <div id="settings-tab-private-key" class="settings-tab-content active">
+                <div id="settings-tab-private-key" class="settings-tab-content">
                     <div id="settings-private-key-section" style="display: none;">
                         <p class="help-text" style="margin-bottom: 1rem;">Add your private key to decrypt your memories. This key is never sent to the server.</p>
 
@@ -258,8 +259,46 @@
                     </div>
                 </div>
 
+                <!-- Change Password Tab Content -->
+                <div id="settings-tab-change-password" class="settings-tab-content">
+                    <div id="settings-change-password-section" style="display: none;">
+                        <p class="help-text" style="margin-bottom: 1.5rem;">Change your password. You'll need to enter your current password for security.</p>
+
+                        <form id="change-password-form">
+                            <div class="form-group">
+                                <label for="current-password">Current Password</label>
+                                <input type="password" id="current-password" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="new-password">New Password</label>
+                                <input type="password" id="new-password" required minlength="8">
+                                <p class="text-muted" style="font-size: 0.875rem; margin-top: 0.25rem;">Must be at least 8 characters</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="confirm-password">Confirm New Password</label>
+                                <input type="password" id="confirm-password" required minlength="8">
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                                Change Password
+                            </button>
+                        </form>
+                        <div id="password-change-status" class="key-status"></div>
+                    </div>
+                    <div id="settings-change-password-not-logged-in" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom: 1rem; opacity: 0.5;">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                        </svg>
+                        <p>Please log in to change your password</p>
+                    </div>
+                </div>
+
                 <!-- Theme Tab Content -->
-                <div id="settings-tab-theme" class="settings-tab-content">
+                <div id="settings-tab-theme" class="settings-tab-content active">
                     <div class="theme-options">
                         <button class="theme-btn" data-theme="system">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -299,7 +338,6 @@
                         <p class="text-muted" style="margin-bottom: 1rem;">Version 1.0</p>
                         <p class="text-muted" style="margin-bottom: 0.5rem;">Zero-knowledge encrypted storage for your memories.</p>
                         <p class="text-muted" style="margin-bottom: 1rem;">Your data is encrypted on your device before upload. The server never sees your private keys or decrypted content.</p>
-                        <p class="text-muted">Built with ❤️ using Go and vanilla JavaScript</p>
                     </div>
                 </div>
             </div>

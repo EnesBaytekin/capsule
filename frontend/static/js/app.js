@@ -151,6 +151,7 @@ function setupEventListeners() {
 
     // Settings
     document.getElementById('save-private-key-btn').addEventListener('click', savePrivateKey);
+    document.getElementById('change-password-form').addEventListener('submit', handleChangePassword);
     document.querySelectorAll('.theme-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             setTheme(e.target.closest('.theme-btn').dataset.theme);
@@ -348,14 +349,41 @@ function handleLogout() {
     // Hide username from header
     document.getElementById('header-username').style.display = 'none';
 
+    // Hide auth-only tabs (Private Key and Change Password)
+    document.querySelectorAll('.auth-only-tab').forEach(tab => {
+        tab.style.setProperty('display', 'none', 'important');
+    });
+
+    // Switch to Theme tab when logged out (first non-auth tab)
+    const themeTab = document.querySelector('[data-settings-tab="theme"]');
+    if (themeTab) {
+        document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
+        themeTab.classList.add('active');
+
+        // Show theme tab content
+        document.querySelectorAll('.settings-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById('settings-tab-theme').classList.add('active');
+    }
+
     // Hide private key section, show "not logged in" message in settings
     const settingsKeySection = document.getElementById('settings-private-key-section');
     const settingsKeyNotLoggedIn = document.getElementById('settings-private-key-not-logged-in');
+    const settingsChangePasswordSection = document.getElementById('settings-change-password-section');
+    const settingsChangePasswordNotLoggedIn = document.getElementById('settings-change-password-not-logged-in');
+
     if (settingsKeySection) {
         settingsKeySection.style.display = 'none';
     }
     if (settingsKeyNotLoggedIn) {
         settingsKeyNotLoggedIn.style.display = 'block';
+    }
+    if (settingsChangePasswordSection) {
+        settingsChangePasswordSection.style.display = 'none';
+    }
+    if (settingsChangePasswordNotLoggedIn) {
+        settingsChangePasswordNotLoggedIn.style.display = 'block';
     }
 
     // Clear all state and revoke blob URLs
@@ -394,14 +422,41 @@ function showDashboard() {
     headerUsername.textContent = currentUser;
     headerUsername.style.display = 'block';
 
+    // Show auth-only tabs (Private Key and Change Password)
+    document.querySelectorAll('.auth-only-tab').forEach(tab => {
+        tab.style.setProperty('display', 'block', 'important');
+    });
+
+    // Activate the Private Key tab (first auth-only tab)
+    const privateKeyTab = document.getElementById('tab-private-key');
+    if (privateKeyTab) {
+        document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
+        privateKeyTab.classList.add('active');
+
+        // Show private key tab content
+        document.querySelectorAll('.settings-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById('settings-tab-private-key').classList.add('active');
+    }
+
     // Show private key section, hide "not logged in" message in settings
     const settingsKeySection = document.getElementById('settings-private-key-section');
     const settingsKeyNotLoggedIn = document.getElementById('settings-private-key-not-logged-in');
+    const settingsChangePasswordSection = document.getElementById('settings-change-password-section');
+    const settingsChangePasswordNotLoggedIn = document.getElementById('settings-change-password-not-logged-in');
+
     if (settingsKeySection) {
         settingsKeySection.style.display = 'block';
     }
     if (settingsKeyNotLoggedIn) {
         settingsKeyNotLoggedIn.style.display = 'none';
+    }
+    if (settingsChangePasswordSection) {
+        settingsChangePasswordSection.style.display = 'block';
+    }
+    if (settingsChangePasswordNotLoggedIn) {
+        settingsChangePasswordNotLoggedIn.style.display = 'none';
     }
 
     // Reset state and setup
@@ -943,6 +998,75 @@ async function savePrivateKey() {
 
     // Show success message
     showToast('Key loaded! Your memories are being decrypted...', 'success');
+}
+
+async function handleChangePassword(e) {
+    e.preventDefault();
+
+    const currentPassword = document.getElementById('current-password').value;
+    const newPassword = document.getElementById('new-password').value;
+    const confirmPassword = document.getElementById('confirm-password').value;
+    const statusDiv = document.getElementById('password-change-status');
+
+    // Validation
+    if (newPassword !== confirmPassword) {
+        statusDiv.innerHTML = 'New passwords do not match';
+        statusDiv.className = 'key-status error';
+        return;
+    }
+
+    if (newPassword.length < 8) {
+        statusDiv.innerHTML = 'New password must be at least 8 characters';
+        statusDiv.className = 'key-status error';
+        return;
+    }
+
+    if (currentPassword === newPassword) {
+        statusDiv.innerHTML = 'New password must be different from current password';
+        statusDiv.className = 'key-status error';
+        return;
+    }
+
+    statusDiv.innerHTML = 'Changing password...';
+    statusDiv.className = 'key-status';
+
+    try {
+        const response = await fetch(API_BASE + '/auth/change-password', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + token
+            },
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusDiv.innerHTML = 'Password changed successfully!';
+            statusDiv.className = 'key-status success';
+            showToast('Password changed successfully!', 'success');
+
+            // Clear the form
+            document.getElementById('change-password-form').reset();
+
+            // Close the modal after a short delay
+            setTimeout(() => {
+                hideModal('settings-modal');
+                statusDiv.innerHTML = '';
+            }, 1500);
+        } else {
+            statusDiv.innerHTML = data.error || 'Failed to change password';
+            statusDiv.className = 'key-status error';
+        }
+    } catch (error) {
+        console.error('Password change error:', error);
+        statusDiv.innerHTML = 'Network error. Please try again.';
+        statusDiv.className = 'key-status error';
+    }
 }
 
 // ===== Upload =====

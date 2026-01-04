@@ -58,6 +58,7 @@ func main() {
 
 	protected.HandleFunc("/keys/upload", keyHandler.UploadPublicKey).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/keys/public", keyHandler.GetPublicKey).Methods("GET", "OPTIONS")
+	protected.HandleFunc("/auth/change-password", authHandler.ChangePassword).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/capsule/upload", capsuleHandler.UploadCapsule).Methods("POST", "OPTIONS")
 	protected.HandleFunc("/capsule/list", capsuleHandler.ListCapsules).Methods("GET", "OPTIONS")
 	protected.HandleFunc("/capsule/download/{id}", capsuleHandler.DownloadCapsule).Methods("GET", "OPTIONS")
