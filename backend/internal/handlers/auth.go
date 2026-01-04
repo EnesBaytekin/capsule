@@ -90,7 +90,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // CheckUsername checks if a username is available
-// Public endpoint that returns 404 if username is available, 200 if taken
+// Public endpoint that returns availability and whitelist status
 func (h *AuthHandler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 	username := r.URL.Query().Get("username")
 	if username == "" {
@@ -110,14 +110,28 @@ func (h *AuthHandler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check whitelist if enabled
+	inWhitelist := true
+	if h.whitelist != nil {
+		inWhitelist = h.whitelist.IsAllowed(username)
+	}
+
+	// Build response
+	response := map[string]interface{}{
+		"available":    !exists,
+		"in_whitelist": inWhitelist,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+
 	if exists {
 		// Username is taken
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(map[string]bool{"available": false})
+		json.NewEncoder(w).Encode(response)
 	} else {
 		// Username is available
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]bool{"available": true})
+		json.NewEncoder(w).Encode(response)
 	}
 }
 

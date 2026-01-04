@@ -1239,19 +1239,27 @@ async function checkUsernameAvailability(e) {
 
     try {
         const response = await fetch(API_BASE + '/auth/check-username?username=' + encodeURIComponent(username));
+        const data = await response.json();
 
-        if (response.status === 404) {
-            // Username is available!
-            statusDiv.textContent = '✓ Username is available';
-            statusDiv.className = 'username-status username-available';
-            submitBtn.disabled = false;
-        } else if (response.ok) {
-            // Username exists - not available
+        // Check if username is available
+        if (data.available) {
+            // Username is available, now check whitelist
+            if (data.in_whitelist) {
+                // Available and in whitelist
+                statusDiv.textContent = '✓ Username is available';
+                statusDiv.className = 'username-status username-available';
+                submitBtn.disabled = false;
+            } else {
+                // Available but not in whitelist
+                statusDiv.textContent = 'This username is not in the whitelist';
+                statusDiv.className = 'username-status username-unavailable';
+                submitBtn.disabled = true;
+            }
+        } else {
+            // Username is already taken
             statusDiv.textContent = '✗ Username is already taken';
             statusDiv.className = 'username-status username-unavailable';
             submitBtn.disabled = true;
-        } else {
-            throw new Error('HTTP ' + response.status);
         }
     } catch (error) {
         console.error('Username check error:', error);
