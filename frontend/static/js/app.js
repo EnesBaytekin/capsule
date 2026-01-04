@@ -37,6 +37,9 @@ let decryptionState = {
 let intersectionObserver = null;
 let observedElements = new Map();
 
+// File storage for mobile compatibility
+let selectedFileData = null; // Store file data to avoid mobile file reference issues
+
 // ===== Initialize =====
 document.addEventListener('DOMContentLoaded', async () => {
     initTheme();
@@ -949,30 +952,41 @@ function handleImagePreview(e) {
     const fileName = document.getElementById('file-name');
     if (file) {
         fileName.textContent = file.name;
+
+        // Read file immediately and store in memory for mobile compatibility
         const reader = new FileReader();
-        reader.onload = (ev) => { preview.innerHTML = '<img src="' + ev.target.result + '" alt="Preview">'; };
+        reader.onload = (ev) => {
+            // Store the result for later use
+            selectedFileData = ev.target.result;
+            // Show preview
+            preview.innerHTML = '<img src="' + ev.target.result + '" alt="Preview">';
+        };
         reader.readAsDataURL(file);
     } else {
         fileName.textContent = '';
         preview.innerHTML = '';
+        selectedFileData = null;
     }
 }
 
 async function handleUpload(e) {
     e.preventDefault();
     const text = document.getElementById('capsule-text').value.trim();
-    const fileInput = document.getElementById('capsule-image');
     const hasText = text.length > 0;
-    const hasImage = fileInput.files.length > 0;
+    const hasImage = selectedFileData !== null;
+
     if (!hasText && !hasImage) {
         showToast('Please enter text or select an image', 'error');
         return;
     }
+
     try {
         let capsuleType, dataToEncrypt;
+
         if (hasText && hasImage) {
             capsuleType = 'mixed';
-            const imageData = await fileInput.files[0].arrayBuffer();
+            // Convert stored DataURL back to binary
+            const imageData = dataURLToArrayBuffer(selectedFileData);
             const imageBase64 = btoa(String.fromCharCode(...new Uint8Array(imageData)));
             const combinedContent = JSON.stringify({ text, image: imageBase64 });
             dataToEncrypt = new TextEncoder().encode(combinedContent);
@@ -981,7 +995,8 @@ async function handleUpload(e) {
             dataToEncrypt = new TextEncoder().encode(text);
         } else {
             capsuleType = 'image';
-            dataToEncrypt = await fileInput.files[0].arrayBuffer();
+            // Convert stored DataURL back to binary
+            dataToEncrypt = dataURLToArrayBuffer(selectedFileData);
         }
         const { encryptedData, encryptedAESKey, nonce } = await encryptData(dataToEncrypt);
         const response = await fetch(API_BASE + '/capsule/upload', {
@@ -994,6 +1009,9 @@ async function handleUpload(e) {
             document.getElementById('upload-form').reset();
             document.getElementById('image-preview').innerHTML = '';
             document.getElementById('file-name').textContent = '';
+
+            // Clear stored file data
+            selectedFileData = null;
 
             // Reset pagination and reload capsules from page 1
             paginationState.page = 1;
@@ -1036,6 +1054,18 @@ async function encryptData(data) {
 // ===== Utilities =====
 function showModal(modalId) { document.getElementById(modalId).classList.remove('hidden'); }
 function hideModal(modalId) { document.getElementById(modalId).classList.add('hidden'); }
+
+// Convert DataURL to ArrayBuffer (for mobile file handling)
+function dataURLToArrayBuffer(dataURL) {
+    // Extract the base64 part (after the comma)
+    const base64 = dataURL.split(',')[1];
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+}
 
 function showToast(message, type) {
     const container = document.getElementById('toast-container');
