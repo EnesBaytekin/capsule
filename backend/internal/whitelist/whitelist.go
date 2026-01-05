@@ -90,8 +90,8 @@ func (m *Manager) load() error {
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
 		}
-		// Add username to whitelist (case-insensitive)
-		m.whitelist[strings.ToLower(line)] = true
+		// Add username to whitelist (case-sensitive)
+		m.whitelist[line] = true
 	}
 
 	return scanner.Err()
@@ -170,8 +170,8 @@ func (m *Manager) IsAllowed(username string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	// Check if username is in whitelist (case-insensitive)
-	return m.whitelist[strings.ToLower(username)]
+	// Check if username is in whitelist (case-sensitive)
+	return m.whitelist[username]
 }
 
 // Stop stops the file watcher

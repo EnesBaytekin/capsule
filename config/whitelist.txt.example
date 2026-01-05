@@ -1,0 +1,19 @@
+# Whitelist Configuration File
+# ----------------------------
+# This file contains the list of usernames allowed to register.
+#
+# Format:
+# - One username per line
+# - Lines starting with # are comments (ignored)
+# - Empty lines are ignored
+# - Usernames are case-sensitive (e.g., "bob", "Bob", and "BOB" are different)
+#
+# The whitelist file is automatically reloaded when changed without requiring
+# a server restart. Simply edit this file and save.
+#
+# Example users:
+# alice
+# bob
+# charlie
+#
+# Add your usernames below:

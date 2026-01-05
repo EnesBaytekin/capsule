@@ -36,4 +36,4 @@ Thumbs.db
 private_key.pem
 certs/
 
-config/
+/config/whitelist.txt
