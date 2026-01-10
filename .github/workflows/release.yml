@@ -1,0 +1,86 @@
+name: Build and Release Docker Images
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  BACKEND_IMAGE: enesbaytekin/capsule-server
+  FRONTEND_IMAGE: enesbaytekin/capsule-ui
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ env.BACKEND_IMAGE }}:latest
+            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ env.FRONTEND_IMAGE }}:latest
+            ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            docker-compose.release.yml
+          generate_release_notes: true
+          body: |
+            ## Time Capsule Release ${{ steps.version.outputs.VERSION }}
+
+            ### Docker Images
+            - **Backend:** `enesbaytekin/capsule-server:latest` or `enesbaytekin/capsule-server:${{ steps.version.outputs.VERSION }}`
+            - **Frontend:** `enesbaytekin/capsule-ui:latest` or `enesbaytekin/capsule-ui:${{ steps.version.outputs.VERSION }}`
+
+            ### Quick Start
+            1. Download `docker-compose.release.yml`
+            2. Rename it to `docker-compose.yml`
+            3. Create `.env` file from `.env.example`
+            4. Generate certificates: `./generate-certs.sh`
+            5. Run: `docker compose up -d`
+
+            ### Documentation
+            See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

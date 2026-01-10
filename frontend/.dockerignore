@@ -1,0 +1,9 @@
+*.log
+node_modules/
+.env
+.DS_Store
+*.db
+*.enc
+data/
+vendor/
+certs/

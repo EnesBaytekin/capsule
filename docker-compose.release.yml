@@ -1,0 +1,68 @@
+# Time Capsule - Production Docker Compose
+# This file is for production deployments using pre-built Docker Hub images
+#
+# Quick Start:
+# 1. Copy this file: cp docker-compose.release.yml docker-compose.yml
+# 2. Create .env file from .env.example: cp .env.example .env
+# 3. Generate JWT secret and update .env
+# 4. Setup SSL certificates (see docs/DEPLOYMENT.md)
+# 5. Run: docker compose up -d
+
+services:
+  # Backend API (HTTPS only)
+  backend:
+    image: enesbaytekin/capsule-server:latest
+    container_name: capsule-backend
+    ports:
+      - "8443:8443"
+    volumes:
+      - backend-data:/app/data
+      - ./certs:/app/certs:ro
+      - ./config:/app/config:ro
+    environment:
+      - PORT=8443
+      - DATABASE_PATH=/app/data/capsule.db
+      - STORAGE_PATH=/app/data/users
+      - JWT_SECRET=${JWT_SECRET}
+      - TLS_CERT=/app/certs/cert.pem
+      - TLS_KEY=/app/certs/key.pem
+      - USE_WHITELIST=${USE_WHITELIST:-false}
+      - WHITELIST_FILE=/app/config/whitelist.txt
+    restart: unless-stopped
+    networks:
+      - capsule-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "8443"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Frontend (HTTPS only)
+  frontend:
+    image: enesbaytekin/capsule-ui:latest
+    container_name: capsule-frontend
+    ports:
+      - "3443:3443"
+    volumes:
+      - ./certs:/app/certs:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - capsule-network
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "3443"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  backend-data:
+    driver: local
+
+networks:
+  capsule-network:
+    driver: bridge
