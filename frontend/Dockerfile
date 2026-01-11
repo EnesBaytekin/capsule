@@ -7,7 +7,7 @@ LABEL description="Time Capsule Frontend - Zero-knowledge encrypted storage UI"
 LABEL version="1.0.0"
 
 # Install nginx and utilities
-RUN apk add --no-cache nginx openssl
+RUN apk add --no-cache nginx openssl netcat-openbsd
 
 WORKDIR /app
 

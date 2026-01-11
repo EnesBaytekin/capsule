@@ -1,12 +1,12 @@
 # Time Capsule - Production Docker Compose
 # This file is for production deployments using pre-built Docker Hub images
 #
+# Environment variables are read from the .env file in the same directory.
+#
 # Quick Start:
-# 1. Copy this file: cp docker-compose.release.yml docker-compose.yml
-# 2. Create .env file from .env.example: cp .env.example .env
-# 3. Generate JWT secret and update .env
-# 4. Setup SSL certificates (see docs/DEPLOYMENT.md)
-# 5. Run: docker compose up -d
+# 1. Edit .env and set JWT_SECRET
+# 2. Place SSL certificates in certs/ directory (cert.pem and key.pem)
+# 3. Run: docker compose up -d
 
 services:
   # Backend API (HTTPS only)
