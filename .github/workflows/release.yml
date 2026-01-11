@@ -60,27 +60,188 @@ jobs:
           cache-to: type=gha,mode=max
           platforms: linux/amd64,linux/arm64
 
+      - name: Prepare release assets
+        run: |
+          # Create release directory
+          mkdir -p release-package
+
+          # Copy essential files
+          cp docker-compose.release.yml release-package/docker-compose.yml
+          cp .env.example release-package/
+          cp generate-certs.sh release-package/
+          cp README.md release-package/
+          cp docs/DEPLOYMENT.md release-package/
+
+          # Copy release scripts
+          cp -r .release release-package/
+          chmod +x release-package/.release/*.sh
+
+          # Create default whitelist template
+          mkdir -p release-package/config
+          cat > release-package/config/whitelist.txt << 'EOF'
+          # Time Capsule Username Whitelist
+          # Add one username per line (case-sensitive)
+          # Lines starting with # are comments
+          #
+          # Example users:
+          # alice
+          # bob
+          # charlie
+          EOF
+
+          # Create quick start guide
+          cat > release-package/QUICKSTART.md << 'EOF'
+          # Time Capsule - Quick Start Guide
+
+          ## Prerequisites
+          - Docker and Docker Compose installed
+          - Ports 8443 and 3443 available
+
+          ## Quick Setup (Automated)
+
+          Run the automated setup script:
+          ```bash
+          chmod +x .release/setup.sh
+          ./.release/setup.sh
+          ```
+
+          ## Manual Setup
+
+          1. **Create environment file:**
+             ```bash
+             cp .env.example .env
+             # Edit .env and set a secure JWT_SECRET
+             ```
+
+          2. **Generate SSL certificates (for testing):**
+             ```bash
+             chmod +x generate-certs.sh
+             ./generate-certs.sh
+             ```
+             For production, use Let's Encrypt - see DEPLOYMENT.md
+
+          3. **Start the application:**
+             ```bash
+              docker compose up -d
+             ```
+
+          4. **Access Time Capsule:**
+             - Frontend: https://localhost:3443
+             - Backend API: https://localhost:8443
+
+          ## Next Steps
+
+          - Read [DEPLOYMENT.md](DEPLOYMENT.md) for production deployment
+          - Read [.release/README.md](.release/README.md) for management scripts
+          - Configure `config/whitelist.txt` if you want to restrict registration
+
+          ## Useful Commands
+
+          ```bash
+          # View logs
+          docker compose logs -f
+
+          # Stop
+          docker compose down
+
+          # Backup
+          ./.release/backup.sh
+
+          # Update
+          ./.release/update.sh
+          ```
+          EOF
+
+          # Create tarball
+          tar -czf capsule-release-${{ steps.version.outputs.VERSION }}.tar.gz -C release-package .
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           files: |
+            capsule-release-${{ steps.version.outputs.VERSION }}.tar.gz
             docker-compose.release.yml
           generate_release_notes: true
           body: |
             ## Time Capsule Release ${{ steps.version.outputs.VERSION }}
 
-            ### Docker Images
+            ### 📦 Docker Images
             - **Backend:** `enesbaytekin/capsule-server:latest` or `enesbaytekin/capsule-server:${{ steps.version.outputs.VERSION }}`
             - **Frontend:** `enesbaytekin/capsule-ui:latest` or `enesbaytekin/capsule-ui:${{ steps.version.outputs.VERSION }}`
 
-            ### Quick Start
-            1. Download `docker-compose.release.yml`
-            2. Rename it to `docker-compose.yml`
-            3. Create `.env` file from `.env.example`
-            4. Generate certificates: `./generate-certs.sh`
-            5. Run: `docker compose up -d`
+            ### 🚀 Quick Start
 
-            ### Documentation
-            See [DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed deployment instructions.
+            **Option 1: Automated Setup (Recommended)**
+            ```bash
+            # Download and extract the release package
+            wget https://github.com/enesbaytekin/capsule/releases/download/v${{ steps.version.outputs.VERSION }}/capsule-release-${{ steps.version.outputs.VERSION }}.tar.gz
+            tar -xzf capsule-release-${{ steps.version.outputs.VERSION }}.tar.gz
+            cd capsule-release-${{ steps.version.outputs.VERSION }}
+
+            # Run automated setup
+            chmod +x .release/setup.sh
+            ./.release/setup.sh
+            ```
+
+            **Option 2: Manual Setup**
+            ```bash
+            # Download docker-compose file
+            wget https://github.com/enesbaytekin/capsule/releases/download/v${{ steps.version.outputs.VERSION }}/docker-compose.release.yml -O docker-compose.yml
+
+            # Download other required files from the release package
+
+            # Setup environment
+            cp .env.example .env
+            # Edit .env and generate secure JWT_SECRET
+
+            # Generate certificates (for testing only)
+            chmod +x generate-certs.sh
+            ./generate-certs.sh
+
+            # Start
+            docker compose up -d
+            ```
+
+            ### 📚 What's Included
+
+            The release package contains:
+            - `docker-compose.yml` - Production Docker Compose configuration
+            - `.env.example` - Environment variables template
+            - `generate-certs.sh` - SSL certificate generator (for testing)
+            - `.release/` - Management scripts (setup, backup, restore, update)
+            - `config/whitelist.txt` - Username whitelist template
+            - `QUICKSTART.md` - Quick start guide
+            - `DEPLOYMENT.md` - Detailed deployment documentation
+            - `README.md` - Project documentation
+
+            ### 🔐 SSL Certificates
+
+            **For Testing:** Use the included `generate-certs.sh` script (self-signed, browser warnings)
+
+            **For Production:** Use Let's Encrypt or your own certificates. See [DEPLOYMENT.md](https://github.com/enesbaytekin/capsule/blob/main/docs/DEPLOYMENT.md#ssltls-certificate-management) for detailed instructions.
+
+            ### 📖 Documentation
+
+            - [Deployment Guide](https://github.com/enesbaytekin/capsule/blob/main/docs/DEPLOYMENT.md)
+            - [Project Structure](https://github.com/enesbaytekin/capsule/blob/main/PROJECT_STRUCTURE.md)
+            - [Release Scripts](https://github.com/enesbaytekin/capsule/blob/main/.release/README.md)
+
+            ### ⚠️ Important Notes
+
+            - Generate a strong `JWT_SECRET` in your `.env` file
+            - Use proper SSL certificates for production (Let's Encrypt recommended)
+            - Keep backups of your data (use `.release/backup.sh`)
+            - Don't lose your private keys - users cannot recover data without them
+
+            ### 🆕 Updating from Previous Version
+
+            ```bash
+            # Pull new images
+            docker compose pull
+            docker compose up -d
+
+            # Or use the update script (includes backup)
+            ./.release/update.sh
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
