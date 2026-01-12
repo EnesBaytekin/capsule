@@ -1,7 +1,10 @@
 # Time Capsule - Production Docker Compose
 # This file is for production deployments using pre-built Docker Hub images
 #
-# Environment variables are read from the .env file in the same directory.
+# Architecture:
+# - Reverse Proxy (nginx) exposed on port 443
+# - Frontend and Backend accessible only through reverse proxy
+# - Environment variables read from .env file
 #
 # Quick Start:
 # 1. Edit .env and set JWT_SECRET
@@ -9,12 +12,31 @@
 # 3. Run: docker compose up -d
 
 services:
-  # Backend API (HTTPS only)
+  # Reverse Proxy (nginx)
+  # Entry point for all traffic - routes to frontend/backend
+  proxy:
+    image: nginx:alpine
+    container_name: capsule-proxy
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro
+      - ./.release/nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - capsule-network
+
+  # Backend API (HTTPS only, internal only)
   backend:
     image: enesbaytekin/capsule-server:latest
     container_name: capsule-backend
-    ports:
-      - "8443:8443"
+    # No port mapping - accessible only through reverse proxy
     volumes:
       - backend-data:/app/data
       - ./certs:/app/certs:ro
@@ -38,12 +60,11 @@ services:
       retries: 3
       start_period: 10s
 
-  # Frontend (HTTPS only)
+  # Frontend (HTTPS only, internal only)
   frontend:
     image: enesbaytekin/capsule-ui:latest
     container_name: capsule-frontend
-    ports:
-      - "3443:3443"
+    # No port mapping - accessible only through reverse proxy
     volumes:
       - ./certs:/app/certs:ro
     depends_on:

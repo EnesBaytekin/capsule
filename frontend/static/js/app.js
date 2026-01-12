@@ -2,9 +2,9 @@
 // ALL encryption/decryption happens on client
 // Server NEVER sees plaintext or private keys
 
-// Dynamic API base URL - uses the same protocol and host as the frontend
-// Uses port 8443 for HTTPS, 8080 for HTTP
-const API_BASE = window.location.protocol + '//' + window.location.hostname + ':' + (window.location.protocol === 'https:' ? '8443' : '8080');
+// API base URL - uses relative path for reverse proxy setup
+// All API calls are proxied through /api/ path
+const API_BASE = '/api';
 
 // Global state
 let currentUser = null;

@@ -65,9 +65,13 @@ jobs:
           # Create release directory structure
           mkdir -p release-package/config
           mkdir -p release-package/certs
+          mkdir -p release-package/.release
 
           # Copy docker-compose file
           cp docker-compose.release.yml release-package/docker-compose.yml
+
+          # Copy nginx proxy configuration
+          cp .release/nginx-proxy.conf release-package/.release/
 
           # Create .env file with example values
           cat > release-package/.env << 'EOF'
@@ -124,11 +128,20 @@ jobs:
 
           Time Capsule is a self-hosted, zero-knowledge encrypted storage application where data is encrypted on the client side before upload. The server never sees private keys and cannot decrypt user data.
 
+          ## Architecture
+
+          This deployment uses a reverse proxy architecture:
+          - **nginx** (port 443) - Entry point, handles SSL and routing
+          - **Frontend** (internal) - Web UI, accessible only through proxy
+          - **Backend** (internal) - API server, accessible only through proxy
+
+          Only port **443** (HTTPS) needs to be exposed.
+
           ## Prerequisites
 
           - **Docker:** 20.10 or later
           - **Docker Compose:** 2.0 or later
-          - **Ports:** 8443 (backend API) and 3443 (frontend) must be available
+          - **Port:** 443 (standard HTTPS) must be available
 
           Install Docker:
           ```bash
@@ -219,14 +232,19 @@ jobs:
           ```
 
           Access Time Capsule:
-          - **Frontend:** https://localhost:3443
-          - **Backend API:** https://localhost:8443
+          - **Application:** https://localhost (or https://your-domain.com)
+          - Port 443 is the standard HTTPS port, so you don't need to specify it
 
           ## Useful Commands
 
           ```bash
           # View logs
           docker compose logs -f
+
+          # View specific service logs
+          docker compose logs -f proxy
+          docker compose logs -f backend
+          docker compose logs -f frontend
 
           # Stop the application
           docker compose down
@@ -254,6 +272,7 @@ jobs:
           # Check logs
           docker compose logs backend
           docker compose logs frontend
+          docker compose logs proxy
           ```
 
           **Permission denied on certificates:**
@@ -262,12 +281,31 @@ jobs:
           chmod 600 certs/key.pem
           ```
 
+          **Port 443 already in use:**
+          ```bash
+          # Check what's using the port
+          sudo netstat -tulpn | grep :443
+
+          # Or use lsof
+          sudo lsof -i :443
+          ```
+
           ## Security Notes
 
+          - Only port 443 is exposed (backend and frontend are internal)
           - Never share your `.env` file (contains JWT_SECRET)
           - Use strong, unique JWT_SECRET in production
           - Keep certificate private keys secure (`key.pem` should be readable only by owner)
           - Regularly update Docker images: `docker compose pull && docker compose up -d`
+          - The reverse proxy adds rate limiting and security headers
+
+          ## Architecture Benefits
+
+          - **Single port exposure:** Only port 443 needs to be open
+          - **Security:** Backend and frontend are not directly accessible
+          - **Rate limiting:** Built-in protection against abuse
+          - **SSL termination:** Managed centrally by nginx
+          - **Standard HTTPS:** Uses port 443, no custom ports needed
 
           ## Documentation
 
@@ -330,20 +368,30 @@ jobs:
                ```
 
             5. **Access Time Capsule:**
-               - Frontend: https://localhost:3443
-               - Backend API: https://localhost:8443
+               - Application: https://localhost (standard HTTPS port 443)
 
             ### 📁 Package Structure
 
             ```
             capsule-release-${{ steps.version.outputs.VERSION }}.zip
-            ├── docker-compose.yml      # Docker Compose configuration
-            ├── .env                    # Environment variables (edit this!)
+            ├── docker-compose.yml        # Docker Compose configuration
+            ├── .env                      # Environment variables (edit this!)
             ├── config/
-            │   └── whitelist.txt       # Username whitelist (optional)
-            ├── certs/                  # Put your SSL certificates here
-            └── README.md               # Deployment guide
+            │   └── whitelist.txt         # Username whitelist (optional)
+            ├── certs/                    # Put your SSL certificates here
+            ├── .release/
+            │   └── nginx-proxy.conf      # Reverse proxy configuration
+            └── README.md                 # Deployment guide
             ```
+
+            ### 🏗️ Architecture
+
+            This release uses a **reverse proxy architecture** for better security:
+            - Only **port 443** (standard HTTPS) is exposed
+            - nginx reverse proxy handles SSL and routing
+            - Frontend and Backend are internal-only
+            - API calls go through `/api/` path
+            - Built-in rate limiting and security headers
 
             ### 📖 Documentation
 
@@ -359,5 +407,6 @@ jobs:
             - **SSL Certificates:** Required for HTTPS-only operation. Place `cert.pem` and `key.pem` in `certs/`
             - **JWT Secret:** Must be changed from the default value in `.env`
             - **Whitelist:** Optional feature to restrict registration (edit `config/whitelist.txt`)
+            - **Port 443:** Standard HTTPS port - no need to specify port in URLs
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
